@@ -144,7 +144,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             CloudBlockBlob file = (CloudBlockBlob)item;
                             FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
                             entry.Name = file.Name.Replace(path, "");
-                            entry.Type = GetExtension(file.Properties.ContentType);
+                            entry.Type = System.IO.Path.GetExtension(file.Name.Replace(path, ""));
                             entry.IsFile = true;
                             entry.Size = file.Properties.Length;
                             entry.DateModified = file.Properties.LastModified.Value.LocalDateTime;
@@ -197,18 +197,6 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             return String.Empty;
         }
 
-        // Gets the extensnion of file
-        public string GetExtension(string type)
-        {
-            string extension = "unknown";
-            RegistryKey key;
-            object value;
-
-            key = Registry.ClassesRoot.OpenSubKey(@"MIME\Database\Content Type\" + type, false);
-            value = key != null ? key.GetValue("Extension", null) : null;
-            extension = value != null ? value.ToString() : string.Empty;
-            return extension;
-        }
         // Converts the byte size value to appropriate value
         public String byteConversion(long fileSize)
         {

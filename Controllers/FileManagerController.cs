@@ -23,8 +23,8 @@ namespace EJ2FileManagerServices.Controllers
         public FileManagerController(IHostingEnvironment hostingEnvironment)
         {            
             this.operation = new AzureFileProvider();
-            this.operation.RegisterAzure("ej2filemanager", "xXmW7B3PCUtbcj8kCtRBhJoy7IsarKP99jv0VK8VxvIKhKqQr/xd12BgRAzc0Yv6DVNLBh9DtVncc+4eBiPN9Q==", "files");
-            this.operation.setBlobContainer("https://ej2filemanager.blob.core.windows.net/files/", "https://ej2filemanager.blob.core.windows.net/files/Files");
+            this.operation.RegisterAzure("ej2syncfusionfilemanager", "cgKqBPKOGYjPPKn/0eHa9XrYvhPThD43yDAk6QXiEW34kN5cTYY+rD0m/+aHTB1c7TbFSiq3MPDEn8mKMX7jjA==", "files");
+            this.operation.setBlobContainer("https://ej2syncfusionfilemanager.blob.core.windows.net/files/", "https://ej2syncfusionfilemanager.blob.core.windows.net/files/Files");
             this.operation.setDownloadPath(@"D:\");
         }
         [Route("AzureFileOperations")]
@@ -32,8 +32,8 @@ namespace EJ2FileManagerServices.Controllers
         {
             if (args.Path != "")
             {
-                var originalPath = "https://ej2filemanager.blob.core.windows.net/files/Files/";
-                string startPath = "https://ej2filemanager.blob.core.windows.net/files/";
+                var originalPath = "https://ej2syncfusionfilemanager.blob.core.windows.net/files/Files/";
+                string startPath = "https://ej2syncfusionfilemanager.blob.core.windows.net/files/";
                 originalPath = originalPath.Replace(startPath, "");
                 args.Path = (originalPath + args.Path).Replace("//", "/");
                 args.TargetPath = (originalPath + args.TargetPath).Replace("//", "/");
