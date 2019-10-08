@@ -1,4 +1,4 @@
-# Azure Cloud File System Provider for Essential JS2 File Manager
+# ej2-azure-aspcore-file-provider
 
 This repository contains the ASP.NET Core Azure storage file system providers for the Essential JS 2 File Manager component.
 
@@ -8,17 +8,18 @@ Azure file system provider serves the file system support for the FileManager co
 
 The following actions can be performed with Azure file system Provider.
 
-- Read     - Read the files from Azure blob container.
-- Details  - Provides details about files Type, Size, Location and Modified date.
-- Download - Download the selected file or folder from the Azure blob.
-- Upload   - Upload a files to Azure blob. It accepts uploaded media with the following characteristics:
-                - Maximum file size:  30MB
-- Create   - Create a new folder.
-- Delete   - Remove a file from Azure blob.
-- Copy     - Copy the selected Files from target.
-- Move     - Paste the copied files to the desired location
-- Rename   - Rename a folder or file
-- Search   - Search a file or folder in Azure blob
+| **Actions** | **Description** |
+| --- | --- |
+| Read     | Reads the files from Azure blob container. |
+| Details  | Provides details about files Type, Size, Location and Modified date. |
+| Download | Downloads the selected file or folder from the Azure blob. |
+| Upload   | Uploads a files to Azure blob. t accepts uploaded media with the following characteristics: <ul><li>Maximum file size:  30MB</li><li>Accepted Media MIME types: `*/*` </li></ul> |
+| Create   | Creates a new folder. |
+| Delete   | Removes a file from Azure blob. |
+| Copy     | Copys the selected Files from target. |
+| Move     | Pastes the copied files to the desired location. |
+| Rename   | Renames a folder or file. |
+| Search   | Searches a file or folder in Azure blob. |
 
 ## Prerequisites
 
@@ -32,13 +33,13 @@ In order to run the service, we need to create the [Azure blob storage account](
 
 ## How to run this application?
 
-To run this application, clone the [`ej2-azure-aspcore-file-provider`](https://github.com/SyncfusionExamples/ej2-azure-aspcore-file-provider) repository and then navigate to its appropriate path where it has been located in your system.
+To run this application, clone the [`ej2-azure-aspcore-file-provider`](https://github.com/ej2-azure-aspcore-file-provider) repository and then navigate to its appropriate path where it has been located in your system.
 
 To do so, open the command prompt and run the below commands one after the other.
 
 ```
 
-git clone https://github.com/SyncfusionExamples/ej2-azure-aspcore-file-provider  ej2-azure-aspcore-file-provider
+git clone https://github.com/ej2-azure-aspcore-file-provider  ej2-azure-aspcore-file-provider
 cd ej2-azure-aspcore-file-provider
 
 ```
@@ -46,6 +47,61 @@ cd ej2-azure-aspcore-file-provider
 ## Running application
 
 Once cloned, open solution file in visual studio.Then build the project after restoring the nuget packages and run it.
+
+
+## File Manager AjaxSettings
+
+To access the basic actions such as Read, Delete, Copy, Move, Rename, Search, and Get Details of File Manager using Azure service, just map the following code snippet in the Ajaxsettings property of File Manager.
+
+Here, the `hostUrl` will be your locally hosted port number.
+
+```
+  var hostUrl = http://localhost:62870/;
+  ajaxSettings: {
+        url: hostUrl + 'api/AzureProvider/AzureFileOperations'
+  }
+```
+
+## File download AjaxSettings
+
+To perform download operation, initialize the `downloadUrl` property in ajaxSettings of the File Manager component.
+
+```
+  var hostUrl = http://localhost:62870/;
+  ajaxSettings: {
+        url: hostUrl + 'api/AzureProvider/AzureFileOperations',
+        downloadUrl: hostUrl +'api/AzureProvider/AzureDownload'
+  }
+```
+
+## File upload AjaxSettings
+
+To perform upload operation, initialize the `uploadUrl` property in ajaxSettings of the File Manager component.
+
+```
+  var hostUrl = http://localhost:62870/;
+  ajaxSettings: {
+        url: hostUrl + 'api/AzureProvider/AzureFileOperations',
+        uploadUrl: hostUrl +'api/AzureProvider/AzureUpload'
+  }
+```
+
+## File image preview AjaxSettings
+
+To perform image preview support in the File Manager component, initialize the `getImageUrl` property in ajaxSettings of the File Manager component.
+
+```
+  var hostUrl = http://localhost:62870/;
+  ajaxSettings: {
+        url: hostUrl + 'api/AzureProvider/AzureFileOperations',
+         getImageUrl: hostUrl +'api/AzureProvider/AzureGetImage'
+  }
+```
+
+The FileManager will be rendered as the following.
+
+![File Manager](https://ej2.syncfusion.com/products/images/file-manager/readme.gif)
+
 
 ## Support
 
