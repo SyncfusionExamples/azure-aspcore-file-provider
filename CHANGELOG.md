@@ -1,5 +1,13 @@
 # Changelog
 
+## 17.3.14 (2019-10-04)
+
+### Azure Cloud File System Provider
+
+#### Bug Fixes
+
+- Issue with multiple folders download has been fixed.
+
 ## 17.2.34 (2019-07-11)
 
 ### Azure Cloud File System Provider
