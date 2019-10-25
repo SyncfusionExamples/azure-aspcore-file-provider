@@ -20,16 +20,16 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         public AzureProviderController(IHostingEnvironment hostingEnvironment)
         {
             this.operation = new AzureFileProvider();
-            this.operation.RegisterAzure("ej2syncfusionfilemanager", "cgKqBPKOGYjPPKn/0eHa9XrYvhPThD43yDAk6QXiEW34kN5cTYY+rD0m/+aHTB1c7TbFSiq3MPDEn8mKMX7jjA==", "files");
-            this.operation.setBlobContainer("https://ej2syncfusionfilemanager.blob.core.windows.net/files/", "https://ej2syncfusionfilemanager.blob.core.windows.net/files/Files");
+            this.operation.RegisterAzure("<--accountName-->", "<--accountKey-->", "<--blobName-->");
+            this.operation.setBlobContainer("<--blobPath-->", "<--filePath-->");
         }
         [Route("AzureFileOperations")]
         public object AzureFileOperations([FromBody] FileManagerDirectoryContent args)
         {
             if (args.Path != "")
             {
-                string startPath = "https://ej2syncfusionfilemanager.blob.core.windows.net/files/";
-                string originalPath = ("https://ej2syncfusionfilemanager.blob.core.windows.net/files/Files/").Replace(startPath, "");
+                string startPath = "<--blobPath-->";
+                string originalPath = ("<--filePath-->").Replace(startPath, "");
                 args.Path = (originalPath + args.Path).Replace("//", "/");
                 args.TargetPath = (originalPath + args.TargetPath).Replace("//", "/");
             }
@@ -80,8 +80,8 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         {
             if (args.Path != "")
             {
-                string startPath = "https://ej2filemanager.blob.core.windows.net/files/";
-                string originalPath = ("https://ej2filemanager.blob.core.windows.net/files/Files/").Replace(startPath, "");
+                string startPath = "<--blobPath-->";
+                string originalPath = ("<--filePath-->").Replace(startPath, "");
                 args.Path = (originalPath + args.Path).Replace("//", "/");
             }
             operation.Upload(args.Path, args.UploadFiles, args.Action, args.Data);
