@@ -8,6 +8,7 @@ using Newtonsoft.Json.Serialization;
 using System.Collections.Generic;
 using Syncfusion.EJ2.FileManager.Base;
 using System;
+using Microsoft.Extensions.Configuration;
 
 namespace EJ2AzureASPCoreFileProvider.Controllers
 {
@@ -16,20 +17,33 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
     [EnableCors("AllowAllOrigins")]
     public class AzureProviderController : Controller
     {
-        public AzureFileProvider operation;
-        public AzureProviderController(IHostingEnvironment hostingEnvironment)
+        public AzureFileProvider _operation;
+        public IWebHostEnvironment _env;
+        public IConfiguration _configuration;
+        public string _blobPath;
+        public string _filePath;
+        public string _containerName;
+        public AzureProviderController(IWebHostEnvironment HostingEnvironment, IConfiguration Configuration)
         {
-            this.operation = new AzureFileProvider();
-            this.operation.RegisterAzure("<--accountName-->", "<--accountKey-->", "<--blobName-->");
-            this.operation.setBlobContainer("<--blobPath-->", "<--filePath-->");
+            _env = HostingEnvironment;
+            _configuration = Configuration;
+            var AccountName = _configuration.GetSection("CloudBlobStorageSettings").GetValue<string>("AccountName");
+            var AccountKey = _configuration.GetSection("CloudBlobStorageSettings").GetValue<string>("AccountKey");
+            _blobPath = _configuration.GetSection("CloudBlobStorageSettings").GetValue<string>("BlobPath");
+            _filePath = _configuration.GetSection("CloudBlobStorageSettings").GetValue<string>("FilePath");
+            _containerName = _configuration.GetSection("CloudBlobStorageSettings").GetValue<string>("ContainerName");
+            this._operation = new AzureFileProvider();
+            this._operation.RegisterAzure(AccountName, AccountKey, _containerName);
+            this._operation.setBlobContainer(_blobPath, _filePath);
         }
+
         [Route("AzureFileOperations")]
         public object AzureFileOperations([FromBody] FileManagerDirectoryContent args)
         {
             if (args.Path != "")
             {
-                string startPath = "<--blobPath-->";
-                string originalPath = ("<--filePath-->").Replace(startPath, "");
+                string startPath = _blobPath;
+                string originalPath = _filePath.Replace(startPath, "");
                 args.Path = (originalPath + args.Path).Replace("//", "/");
                 args.TargetPath = (originalPath + args.TargetPath).Replace("//", "/");
             }
@@ -37,28 +51,28 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
             {
                 case "read":
                     // reads the file(s) or folder(s) from the given path.
-                    return Json(this.ToCamelCase(this.operation.GetFiles(args.Path, args.Data)));
+                    return Json(this.ToCamelCase(this._operation.GetFiles(args.Path, args.Data)));
                 case "delete":
                     // deletes the selected file(s) or folder(s) from the given path.
-                    return this.ToCamelCase(this.operation.Delete(args.Path, args.Names, args.Data));
+                    return this.ToCamelCase(this._operation.Delete(args.Path, args.Names, args.Data));
                 case "details":
                     // gets the details of the selected file(s) or folder(s).
-                    return this.ToCamelCase(this.operation.Details(args.Path, args.Names, args.Data));
+                    return this.ToCamelCase(this._operation.Details(args.Path, args.Names, args.Data));
                 case "create":
                     // creates a new folder in a given path.
-                    return this.ToCamelCase(this.operation.Create(args.Path, args.Name));
+                    return this.ToCamelCase(this._operation.Create(args.Path, args.Name));
                 case "search":
                     // gets the list of file(s) or folder(s) from a given path based on the searched key string.
-                    return this.ToCamelCase(this.operation.Search(args.Path, args.SearchString, args.ShowHiddenItems, args.CaseSensitive, args.Data));
+                    return this.ToCamelCase(this._operation.Search(args.Path, args.SearchString, args.ShowHiddenItems, args.CaseSensitive, args.Data));
                 case "rename":
                     // renames a file or folder.
-                    return this.ToCamelCase(this.operation.Rename(args.Path, args.Name, args.NewName, false, args.Data));
+                    return this.ToCamelCase(this._operation.Rename(args.Path, args.Name, args.NewName, false, args.Data));
                 case "copy":
                     // copies the selected file(s) or folder(s) from a path and then pastes them into a given target path.
-                    return this.ToCamelCase(this.operation.Copy(args.Path, args.TargetPath, args.Names, args.RenameFiles, args.TargetData, args.Data));
+                    return this.ToCamelCase(this._operation.Copy(args.Path, args.TargetPath, args.Names, args.RenameFiles, args.TargetData, args.Data));
                 case "move":
                     // cuts the selected file(s) or folder(s) from a path and then pastes them into a given target path.
-                    return this.ToCamelCase(this.operation.Move(args.Path, args.TargetPath, args.Names, args.RenameFiles, args.TargetData, args.Data));
+                    return this.ToCamelCase(this._operation.Move(args.Path, args.TargetPath, args.Names, args.RenameFiles, args.TargetData, args.Data));
 
             }
             return null;
@@ -80,11 +94,11 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         {
             if (args.Path != "")
             {
-                string startPath = "<--blobPath-->";
-                string originalPath = ("<--filePath-->").Replace(startPath, "");
+                string startPath = _blobPath;
+                string originalPath = _filePath.Replace(startPath, "");
                 args.Path = (originalPath + args.Path).Replace("//", "/");
             }
-            operation.Upload(args.Path, args.UploadFiles, args.Action, args.Data);
+            _operation.Upload(args.Path, args.UploadFiles, args.Action, args.Data);
             return Json("");
         }
 
@@ -93,14 +107,14 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         public object AzureDownload(string downloadInput)
         {
             FileManagerDirectoryContent args = JsonConvert.DeserializeObject<FileManagerDirectoryContent>(downloadInput);
-            return operation.Download(args.Path, args.Names, args.Data);
+            return _operation.Download(args.Path, args.Names, args.Data);
         }
 
         // gets the image(s) from the given path
         [Route("AzureGetImage")]
         public IActionResult AzureGetImage(FileManagerDirectoryContent args)
         {
-            return this.operation.GetImage(args.Path, args.Id, true, null, args.Data);
+            return this._operation.GetImage(args.Path, args.Id, true, null, args.Data);
         }
     }
 
