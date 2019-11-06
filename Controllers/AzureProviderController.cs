@@ -21,7 +21,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         {
             this.operation = new AzureFileProvider();
             this.operation.RegisterAzure("<--accountName-->", "<--accountKey-->", "<--blobName-->");
-            this.operation.setBlobContainer("<--blobPath-->", "<--filePath-->");
+            this.operation.SetBlobContainer("<--blobPath-->", "<--filePath-->");
         }
         [Route("AzureFileOperations")]
         public object AzureFileOperations([FromBody] FileManagerDirectoryContent args)
