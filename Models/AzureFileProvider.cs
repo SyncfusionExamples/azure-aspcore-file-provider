@@ -50,7 +50,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             container = new CloudStorageAccount(new StorageCredentials(accountName, accountKey), useHttps: true).CreateCloudBlobClient().GetContainerReference(blobName);
         }
         // Sets blob and file path
-        public void setBlobContainer(string blobPath, string filePath)
+        public void SetBlobContainer(string blobPath, string filePath)
         {
             this.BlobPath = blobPath;
             this.FilesPath = filePath;
