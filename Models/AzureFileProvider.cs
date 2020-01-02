@@ -948,10 +948,5 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         {
             return "^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
         }
-
-        public void setDownloadPath(string downloadLocation)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

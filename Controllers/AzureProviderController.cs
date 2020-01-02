@@ -22,6 +22,11 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
             this.operation = new AzureFileProvider();
             this.operation.RegisterAzure("<--accountName-->", "<--accountKey-->", "<--blobName-->");
             this.operation.SetBlobContainer("<--blobPath-->", "<--filePath-->");
+            //----------
+            //for example 
+            //this.operation.RegisterAzure("azure_service_account", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "files");
+            //this.operation.setBlobContainer("https://azure_service_account.blob.core.windows.net/files/", "https://azure_service_account.blob.core.windows.net/files/Files");
+            //---------
         }
         [Route("AzureFileOperations")]
         public object AzureFileOperations([FromBody] FileManagerDirectoryContent args)
@@ -30,6 +35,11 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
             {
                 string startPath = "<--blobPath-->";
                 string originalPath = ("<--filePath-->").Replace(startPath, "");
+                //-----------------
+                // for example
+                //string startPath = "https://azure_service_account.blob.core.windows.net/files/";
+                //string originalPath = ("https://azure_service_account.blob.core.windows.net/files/Files").Replace(startPath, "");
+                //-------------------
                 args.Path = (originalPath + args.Path).Replace("//", "/");
                 args.TargetPath = (originalPath + args.TargetPath).Replace("//", "/");
             }
@@ -83,6 +93,12 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
                 string startPath = "<--blobPath-->";
                 string originalPath = ("<--filePath-->").Replace(startPath, "");
                 args.Path = (originalPath + args.Path).Replace("//", "/");
+                //----------------------
+                //for example
+                //string startPath = "https://azure_service_account.blob.core.windows.net/files/";
+                //string originalPath = ("https://azure_service_account.blob.core.windows.net/files/Files").Replace(startPath, "");
+                //args.Path = (originalPath + args.Path).Replace("//", "/");
+                //----------------------
             }
             operation.Upload(args.Path, args.UploadFiles, args.Action, args.Data);
             return Json("");
