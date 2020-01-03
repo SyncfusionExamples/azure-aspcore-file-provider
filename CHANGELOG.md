@@ -1,5 +1,13 @@
 # Changelog
 
+## 17.3.26 (2019-11-05)
+
+### Azure Cloud File System Provider
+
+#### Breaking Changes
+
+- Now, the `setBlobContainer` method is renamed as `SetBlobContainer`.
+
 ## 17.3.14 (2019-10-04)
 
 ### Azure Cloud File System Provider

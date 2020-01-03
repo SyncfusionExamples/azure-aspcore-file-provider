@@ -4,9 +4,9 @@
 	<MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
     <RootNamespace>Syncfusion.EJ2.FileManager.AzureFileProvider</RootNamespace>
     <AssemblyName>Syncfusion.EJ2.FileManager.AzureFileProvider</AssemblyName>
-    <AssemblyVersion>17.2.0.34</AssemblyVersion>
-    <FileVersion>17.2.0.34</FileVersion>
-    <Version>17.2.0.34</Version>        
+    <AssemblyVersion>17.4.0.40</AssemblyVersion>
+    <FileVersion>17.4.0.40</FileVersion>
+    <Version>17.4.0.40</Version>        
     <Product>Syncfusion file manager Azure file provider for Essential JS 2</Product>    
     <Company>Syncfusion Inc.</Company>
     <PackageId>Syncfusion.EJ2.FileManager.AzureFileProvider</PackageId>
@@ -26,7 +26,7 @@
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.1.2" PrivateAssets="All" />
     <PackageReference Include="WindowsAzure.Storage" Version="9.3.3" />
-	<PackageReference Include="Syncfusion.EJ2.AspNet.Core" Version="17.3.0.26" />
+	<PackageReference Include="Syncfusion.EJ2.AspNet.Core" Version="17.4.0.40"/>
   </ItemGroup>
 
 </Project>
