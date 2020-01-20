@@ -326,7 +326,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             BlobResultSegment items = await AsyncReadCall(path, "Read");
             string checkName = name.Contains(" ") ? name.Replace(" ", "%20") : name;
             if (await IsFolderExists(path + name) || (items.Results.Where(x => x.Uri.Segments.Last().Replace("/", "").ToLower() == checkName.ToLower()).Select(i => i).ToArray().Length > 0))
-            {
+            { 
                this.isFolderAvailable = true;
             }
             else
