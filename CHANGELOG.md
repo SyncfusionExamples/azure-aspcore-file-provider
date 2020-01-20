@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+## 17.4.43 (2020-01-14)
+
+### Azure Cloud File System Provider
+
+#### Bug Fixes
+
+- `#149499` - The issue with date modified has been fixed.
+
 ## 17.3.26 (2019-11-05)
 
 ### Azure Cloud File System Provider
