@@ -31,18 +31,19 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
     public class AzureFileProvider : AzureFileProviderBase
     {
         List<FileManagerDirectoryContent> Items = new List<FileManagerDirectoryContent>();
-        private CloudBlobContainer container;
-        private CloudBlobDirectory item;
-        private string PathValue;
-        private string BlobPath;
-        private string FilesPath;
-        private string DownloadLocation;
-        private long size;
-        private string rootPath;
-        private List<string> existFiles = new List<string>();
-        private List<string> missingFiles = new List<string>();
-        private bool isFolderAvailable = false;
-        private List<FileManagerDirectoryContent> copiedFiles = new List<FileManagerDirectoryContent>();
+        CloudBlobContainer container;
+        CloudBlobDirectory item;
+        string PathValue;
+        string BlobPath;
+        string FilesPath;
+        long size;
+        string rootPath;
+        List<string> existFiles = new List<string>();
+        List<string> missingFiles = new List<string>();
+        bool isFolderAvailable = false;
+        List<FileManagerDirectoryContent> copiedFiles = new List<FileManagerDirectoryContent>();
+        DateTime lastUpdated = DateTime.MinValue;
+        DateTime prevUpdated = DateTime.MinValue;
 
         // Registering the azure storage 
         public void RegisterAzure(string accountName, string accountKey, string blobName)
@@ -131,6 +132,8 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             entry.Size = 0;
                             entry.HasChild = await HasChildDirectory(directory.Prefix);
                             entry.FilterPath = selectedItems.Length > 0 ? path.Replace(this.rootPath, "") : "/";
+                            entry.DateModified = await DirectoryLastModified(directory.Prefix);
+                            lastUpdated = prevUpdated = DateTime.MinValue;
                             details.Add(entry);
                         }
                     }
@@ -142,6 +145,28 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             }
             readResponse.Files = details;
             return readResponse;
+        }
+        // Returns the last modified date for directories
+        protected async Task<DateTime> DirectoryLastModified(string path)
+        {
+            BlobResultSegment items = await AsyncReadCall(path, "Read");
+            //Checks the corresponding folder's last modified date of recent updated file from any of its sub folders. 
+            if (items.Results.Where(x => x.GetType() == typeof(CloudBlobDirectory)).Select(x => x).ToList().Count > 0)
+            {
+                List<IListBlobItem> folderItems = items.Results.Where(x => x.GetType() == typeof(CloudBlobDirectory)).Select(x => x).ToList();
+                foreach (IListBlobItem item in folderItems)
+                {
+                    DateTime checkFolderModified = DirectoryLastModified(((CloudBlobDirectory)item).Prefix).Result;
+                    lastUpdated = prevUpdated = (prevUpdated < checkFolderModified) ? checkFolderModified : prevUpdated;
+                }
+            }
+            //Checks the corresponding folder's last modified date of recent updated file
+            if (items.Results.Where(x => x.GetType() == typeof(CloudBlockBlob)).Select(x => x).ToList().Count > 0)
+            {
+                DateTime checkFileModified = ((CloudBlockBlob)items.Results.Where(x => x.GetType() == typeof(CloudBlockBlob)).Select(x => x).ToList().OrderByDescending(m => ((CloudBlockBlob)m).Properties.LastModified).ToList().First()).Properties.LastModified.Value.LocalDateTime;
+                lastUpdated = prevUpdated = prevUpdated < checkFileModified ? checkFileModified : prevUpdated;
+            }
+            return lastUpdated;
         }
         // Converts the byte size value to appropriate value
         protected string byteConversion(long fileSize)
