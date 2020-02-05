@@ -262,7 +262,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                 fileDetails.Name = fileItem.Name;
                                 fileDetails.Location = ((namesAvailable ? rootPath + fileItem.FilterPath + fileItem.Name : path.Substring(0, path.Length - 1))).Replace("/", @"\");
                                 fileDetails.Size = byteConversion(sizeValue);
-                                fileDetails.Modified = fileItem.DateModified;
+                                fileDetails.Modified = await DirectoryLastModified(path);
                                 detailsResponse.Details = fileDetails;
                             }
                         }
@@ -326,8 +326,8 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             BlobResultSegment items = await AsyncReadCall(path, "Read");
             string checkName = name.Contains(" ") ? name.Replace(" ", "%20") : name;
             if (await IsFolderExists(path + name) || (items.Results.Where(x => x.Uri.Segments.Last().Replace("/", "").ToLower() == checkName.ToLower()).Select(i => i).ToArray().Length > 0))
-            { 
-               this.isFolderAvailable = true;
+            {
+                this.isFolderAvailable = true;
             }
             else
             {
@@ -739,7 +739,6 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         {
             CloudBlobDirectory blobDirectory = container.GetDirectoryReference(targetPath);
             BlobResultSegment items = await AsyncReadCall(subfolder.Path, "Paste");
-            await CreateFolderAsync(targetPath, subfolder.Name);
             targetPath = targetPath + subfolder.Name + "/";
             foreach (IListBlobItem item in items.Results)
             {
@@ -810,7 +809,6 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         {
             CloudBlobDirectory blobDirectory = container.GetDirectoryReference(targetPath);
             BlobResultSegment items = await AsyncReadCall(subfolder.Path, "Paste");
-            await CreateFolderAsync(targetPath, subfolder.Name);
             targetPath = targetPath + subfolder.Name + "/";
             foreach (IListBlobItem item in items.Results)
             {
