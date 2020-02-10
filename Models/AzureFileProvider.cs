@@ -262,7 +262,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                 fileDetails.Name = fileItem.Name;
                                 fileDetails.Location = ((namesAvailable ? rootPath + fileItem.FilterPath + fileItem.Name : path.Substring(0, path.Length - 1))).Replace("/", @"\");
                                 fileDetails.Size = byteConversion(sizeValue);
-                                fileDetails.Modified = fileItem.DateModified;
+                                fileDetails.Modified = await DirectoryLastModified(path);
                                 detailsResponse.Details = fileDetails;
                             }
                         }
@@ -422,6 +422,15 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     path = this.FilesPath.Replace(this.BlobPath, "") + FileItem.FilterPath;
                     CloudBlockBlob blockBlob = container.GetBlockBlobReference(path + FileItem.Name);
                     await blockBlob.DeleteAsync();
+                    string fullName = Path.Combine(Path.GetTempPath(), FileItem.Name);
+                    var dir = new DirectoryInfo(Path.GetTempPath());
+                    foreach (var file in Directory.GetFiles(dir.ToString()))
+                    {
+                        if (file.ToString() == fullName)
+                        {
+                            File.Delete(file);
+                        }
+                    }
                     entry.Name = FileItem.Name;
                     entry.Type = FileItem.Type;
                     entry.IsFile = FileItem.IsFile;
@@ -455,22 +464,107 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Upload file(s) to the storage
         public FileManagerResponse Upload(string path, IList<IFormFile> files, string action, params FileManagerDirectoryContent[] data)
         {
-            return UploadAsync(files, path, data).GetAwaiter().GetResult();
+            return UploadAsync(files, action, path, data).GetAwaiter().GetResult();
         }
         // Upload file(s) to the storage
-        protected async Task<FileManagerResponse> UploadAsync(IEnumerable<IFormFile> files, string path, IEnumerable<object> selectedItems = null)
+        protected async Task<FileManagerResponse> UploadAsync(IEnumerable<IFormFile> files, string action, string path, IEnumerable<object> selectedItems = null)
         {
+            FileManagerResponse uploadResponse = new FileManagerResponse();
             try
-            {
-                foreach (var file in files)
+            {             
+                foreach (IFormFile file in files)
                 {
-                    CloudBlockBlob blockBlob = container.GetBlockBlobReference(path.Replace(this.BlobPath, "") + file.FileName);
-                    blockBlob.Properties.ContentType = file.ContentType;
-                    await blockBlob.UploadFromStreamAsync(file.OpenReadStream());
+                    if (files != null)
+                    {
+                        CloudBlockBlob blockBlob = container.GetBlockBlobReference(path.Replace(this.BlobPath, "") + file.FileName);
+                        blockBlob.Properties.ContentType = file.ContentType;                     
+                        string name = file.FileName;
+                        string fullName = Path.Combine(Path.GetTempPath(), name);                       
+                        if (action == "save")
+                        {
+                            if (!System.IO.File.Exists(fullName))
+                            {
+                                using (FileStream fs = System.IO.File.Create(fullName))
+                                {
+                                    await blockBlob.UploadFromStreamAsync(file.OpenReadStream());
+                                    fs.Flush();
+                                }
+                            }
+                            else
+                            {
+                                existFiles.Add(name);
+                            }
+                        }
+                        else if (action == "remove")
+                        {
+                            if (System.IO.File.Exists(fullName))
+                            {
+                                System.IO.File.Delete(fullName);
+                            }
+                            else
+                            {
+                                ErrorDetails er = new ErrorDetails();
+                                er.Code = "404";
+                                er.Message = "File not found.";
+                                uploadResponse.Error = er;
+                            }
+                        }
+                        else if (action == "replace")
+                        {
+                            if (System.IO.File.Exists(fullName))
+                            {
+                                System.IO.File.Delete(fullName);
+                            }
+                            using (FileStream fs = System.IO.File.Create(fullName))
+                            {
+                                await blockBlob.UploadFromStreamAsync(file.OpenReadStream());
+                                fs.Flush();
+                            }
+                        }
+                        else if (action == "keepboth")
+                        {
+                            string newName = fullName;
+                            string newFileName = file.FileName;
+                            int index = fullName.LastIndexOf(".");
+                            int indexValue = newFileName.LastIndexOf(".");
+                            if (index >= 0)
+                            {
+                                newName = fullName.Substring(0, index);
+                                newFileName = newFileName.Substring(0, indexValue);
+                            }
+                            int fileCount = 0;
+                            while (System.IO.File.Exists(newName + (fileCount > 0 ? "(" + fileCount.ToString() + ")" + Path.GetExtension(name) : Path.GetExtension(name)))) 
+                            { 
+                                fileCount++; 
+                            }
+
+                            newName = newFileName + (fileCount > 0 ? "(" + fileCount.ToString() + ")" : "") + Path.GetExtension(name);
+ 
+                            CloudBlockBlob newBlob = container.GetBlockBlobReference(path.Replace(this.BlobPath, "") + newName);
+                            newBlob.Properties.ContentType = file.ContentType;
+                            string fullPath = Path.Combine(Path.GetTempPath(), newName);
+                            using (FileStream fs = System.IO.File.Create(fullPath)) 
+                            {
+                                await newBlob.UploadFromStreamAsync(file.OpenReadStream());      
+                                fs.Flush(); 
+                            }
+                        }
+                    }
+                }
+                if (existFiles.Count != 0)
+                {
+                    ErrorDetails er = new ErrorDetails();
+                    er.FileExists = existFiles;
+                    er.Code = "400";
+                    er.Message = "File Already Exists";
+                    uploadResponse.Error = er;
                 }
             }
-            catch (Exception ex) { throw ex; }
-            return null;
+            catch (Exception ex) 
+            { 
+                throw ex; 
+            }
+            return uploadResponse;
         }
         protected async Task CopyFileToTemp(string path, CloudBlockBlob blockBlob)
         {
@@ -739,7 +833,6 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         {
             CloudBlobDirectory blobDirectory = container.GetDirectoryReference(targetPath);
             BlobResultSegment items = await AsyncReadCall(subfolder.Path, "Paste");
-            await CreateFolderAsync(targetPath, subfolder.Name);
             targetPath = targetPath + subfolder.Name + "/";
             foreach (IListBlobItem item in items.Results)
             {
@@ -810,7 +903,6 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         {
             CloudBlobDirectory blobDirectory = container.GetDirectoryReference(targetPath);
             BlobResultSegment items = await AsyncReadCall(subfolder.Path, "Paste");
-            await CreateFolderAsync(targetPath, subfolder.Name);
             targetPath = targetPath + subfolder.Name + "/";
             foreach (IListBlobItem item in items.Results)
             {

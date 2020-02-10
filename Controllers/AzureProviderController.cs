@@ -8,6 +8,7 @@ using Newtonsoft.Json.Serialization;
 using System.Collections.Generic;
 using Syncfusion.EJ2.FileManager.Base;
 using System;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace EJ2AzureASPCoreFileProvider.Controllers
 {
@@ -100,7 +101,15 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
                 //args.Path = (originalPath + args.Path).Replace("//", "/");
                 //----------------------
             }
-            operation.Upload(args.Path, args.UploadFiles, args.Action, args.Data);
+            FileManagerResponse uploadResponse;
+            uploadResponse = operation.Upload(args.Path, args.UploadFiles, args.Action, args.Data);
+            if (uploadResponse.Error != null)
+            {
+                Response.Clear();
+                Response.ContentType = "application/json; charset=utf-8";
+                Response.StatusCode = Convert.ToInt32(uploadResponse.Error.Code);
+                Response.HttpContext.Features.Get<IHttpResponseFeature>().ReasonPhrase = uploadResponse.Error.Message;
+            }
             return Json("");
         }
 
