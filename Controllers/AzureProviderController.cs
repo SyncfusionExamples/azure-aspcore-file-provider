@@ -1,14 +1,14 @@
-﻿using Syncfusion.EJ2.FileManager.AzureFileProvider;
-using Microsoft.AspNetCore.Cors;
+﻿using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using System.Collections.Generic;
-using Syncfusion.EJ2.FileManager.Base;
-using System;
 using Microsoft.AspNetCore.Http.Features;
+using System;
+using Syncfusion.EJ2.FileManager.Base;
+using Syncfusion.EJ2.FileManager.AzureFileProvider;
+
 
 namespace EJ2AzureASPCoreFileProvider.Controllers
 {

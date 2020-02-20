@@ -32,7 +32,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         bool isFolderAvailable = false;
         List<FileManagerDirectoryContent> copiedFiles = new List<FileManagerDirectoryContent>();
         DateTime lastUpdated = DateTime.MinValue;
-        DateTime previousUpdated = DateTime.MinValue;
+        DateTime prevUpdated = DateTime.MinValue;
 
         // Registering the azure storage 
         public void RegisterAzure(string accountName, string accountKey, string blobName)
@@ -122,7 +122,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             entry.HasChild = await HasChildDirectory(directory.Prefix);
                             entry.FilterPath = selectedItems.Length > 0 ? path.Replace(this.rootPath, "") : "/";
                             entry.DateModified = await DirectoryLastModified(directory.Prefix);
-                            lastUpdated = previousUpdated = DateTime.MinValue;
+                            lastUpdated = prevUpdated = DateTime.MinValue;
                             details.Add(entry);
                         }
                     }
@@ -146,14 +146,14 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 foreach (IListBlobItem item in folderItems)
                 {
                     DateTime checkFolderModified = DirectoryLastModified(((CloudBlobDirectory)item).Prefix).Result;
-                    lastUpdated = previousUpdated = (previousUpdated < checkFolderModified) ? checkFolderModified : previousUpdated;
+                    lastUpdated = prevUpdated = (prevUpdated < checkFolderModified) ? checkFolderModified : prevUpdated;
                 }
             }
             //Checks the corresponding folder's last modified date of recent updated file
             if (items.Results.Where(x => x.GetType() == typeof(CloudBlockBlob)).Select(x => x).ToList().Count > 0)
             {
                 DateTime checkFileModified = ((CloudBlockBlob)items.Results.Where(x => x.GetType() == typeof(CloudBlockBlob)).Select(x => x).ToList().OrderByDescending(m => ((CloudBlockBlob)m).Properties.LastModified).ToList().First()).Properties.LastModified.Value.LocalDateTime;
-                lastUpdated = previousUpdated = previousUpdated < checkFileModified ? checkFileModified : previousUpdated;
+                lastUpdated = prevUpdated = prevUpdated < checkFileModified ? checkFileModified : prevUpdated;
             }
             return lastUpdated;
         }
