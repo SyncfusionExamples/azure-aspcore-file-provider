@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Azure Cloud File System Provider
+
+#### New Features
+
+- `#262023` - Support has been provided for upload customization.
+
 ## 17.4.43 (2020-01-14)
 
 ### Azure Cloud File System Provider
