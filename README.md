@@ -40,6 +40,7 @@ To do so, open the command prompt and run the below commands one after the other
 ```
 
 git clone https://github.com/ej2-azure-aspcore-file-provider  ej2-azure-aspcore-file-provider
+
 cd ej2-azure-aspcore-file-provider
 
 ```
