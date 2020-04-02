@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## 18.1.42 (2020-04-01)
+
 ### Azure Cloud File System Provider
 
 #### New Features
