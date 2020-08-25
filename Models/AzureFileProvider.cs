@@ -26,6 +26,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         string filesPath;
         long size;
         string rootPath;
+        string currentFolderName = "";
+        string previousFolderName = "";
+        string initialFolderName = "";
         List<string> existFiles = new List<string>();
         List<string> missingFiles = new List<string>();
         bool isFolderAvailable = false;
@@ -314,8 +317,8 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             BlobResultSegment items = await AsyncReadCall(path, "Read");
             string checkName = name.Contains(" ") ? name.Replace(" ", "%20") : name;
             if (await IsFolderExists(path + name) || (items.Results.Where(x => x.Uri.Segments.Last().Replace("/", "").ToLower() == checkName.ToLower()).Select(i => i).ToArray().Length > 0))
-            {
-                this.isFolderAvailable = true;
+            { 
+               this.isFolderAvailable = true;
             }
             else
             {
@@ -467,47 +470,26 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         CloudBlockBlob blockBlob = container.GetBlockBlobReference(path.Replace(this.blobPath, "") + file.FileName);
                         blockBlob.Properties.ContentType = file.ContentType;                     
                         string fileName = file.FileName;
-                        string absoluteFilePath = Path.Combine(Path.GetTempPath(), fileName);                       
+                        string absoluteFilePath = Path.Combine(path, fileName);
                         if (action == "save")
                         {
-                            if (!File.Exists(absoluteFilePath))
+                            if (!await IsFileExists(absoluteFilePath))
                             {
-                                using (FileStream fs = File.Create(absoluteFilePath))
-                                {
-                                    await blockBlob.UploadFromStreamAsync(file.OpenReadStream());
-                                    fs.Flush();
-                                }
+                                await blockBlob.UploadFromStreamAsync(file.OpenReadStream());
                             }
                             else
                             {
                                 existFiles.Add(fileName);
                             }
                         }
-                        else if (action == "remove")
-                        {
-                            if (File.Exists(absoluteFilePath))
-                            {
-                                File.Delete(absoluteFilePath);
-                            }
-                            else
-                            {
-                                ErrorDetails error = new ErrorDetails();
-                                error.Code = "404";
-                                error.Message = "File not found.";
-                                uploadResponse.Error = error;
-                            }
-                        }
                         else if (action == "replace")
                         {
-                            if (File.Exists(absoluteFilePath))
+                            if (await IsFileExists(absoluteFilePath))
                             {
-                                File.Delete(absoluteFilePath);
+                                await blockBlob.DeleteAsync();
                             }
-                            using (FileStream fs = File.Create(absoluteFilePath))
-                            {
-                                await blockBlob.UploadFromStreamAsync(file.OpenReadStream());
-                                fs.Flush();
-                            }
+                             
+                            await blockBlob.UploadFromStreamAsync(file.OpenReadStream());
                         }
                         else if (action == "keepboth")
                         {
@@ -521,21 +503,16 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                 newFileName = newFileName.Substring(0, indexValue);
                             }
                             int fileCount = 0;
-                            while (File.Exists(newAbsoluteFilePath + (fileCount > 0 ? "(" + fileCount.ToString() + ")" + Path.GetExtension(fileName) : Path.GetExtension(fileName)))) 
-                            { 
-                                fileCount++; 
+                            while (await IsFileExists(newAbsoluteFilePath + (fileCount > 0 ? "(" + fileCount.ToString() + ")" + Path.GetExtension(fileName) : Path.GetExtension(fileName))))
+                            {
+                                fileCount++;
                             }
 
                             newAbsoluteFilePath = newFileName + (fileCount > 0 ? "(" + fileCount.ToString() + ")" : "") + Path.GetExtension(fileName);
  
                             CloudBlockBlob newBlob = container.GetBlockBlobReference(path.Replace(this.blobPath, "") + newAbsoluteFilePath);
                             newBlob.Properties.ContentType = file.ContentType;
-                            string fullPath = Path.Combine(Path.GetTempPath(), newAbsoluteFilePath);
-                            using (FileStream fs = File.Create(fullPath)) 
-                            {
-                                await newBlob.UploadFromStreamAsync(file.OpenReadStream());      
-                                fs.Flush(); 
-                            }
+                            await newBlob.UploadFromStreamAsync(file.OpenReadStream());
                         }
                     }
                 }
@@ -595,6 +572,8 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             }
                             string relativeFilePath = this.filesPath + files.FilterPath;
                             relativeFilePath = relativeFilePath.Replace(this.blobPath, "");
+                            this.currentFolderName = files.Name;
+                            this.initialFolderName = files.Name;
                             if (files.IsFile)
                             {
                                 CloudBlockBlob blockBlob = container.GetBlockBlobReference(relativeFilePath + files.Name);
@@ -604,7 +583,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                 }
                                 string absoluteFilePath = Path.GetTempPath() + files.Name;
                                 await CopyFileToTemp(absoluteFilePath, blockBlob);
-                                zipEntry = archive.CreateEntryFromFile(Path.GetTempPath() + files.Name, files.Name, CompressionLevel.Fastest);
+                                zipEntry = archive.CreateEntryFromFile(absoluteFilePath, files.Name, CompressionLevel.Fastest);
                                 if (File.Exists(Path.Combine(Path.GetTempPath(), files.Name)))
                                 {
                                     File.Delete(Path.Combine(Path.GetTempPath(), files.Name));
@@ -612,17 +591,16 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             }
                             else
                             {
-                                string subFolder = relativeFilePath.Replace(this.filesPath + "/", "");
                                 relativeFilePath = relativeFilePath.Replace(this.blobPath, "");
                                 pathValue = relativeFilePath + files.Name;
-                                await DownloadFolder(relativeFilePath, subFolder + files.Name, zipEntry, archive);
+                                await DownloadFolder(relativeFilePath, files.Name, zipEntry, archive);
                             }
                         }
                     }
                     archive.Dispose();
                     FileStream fileStreamInput = new FileStream(tempPath, FileMode.Open, FileAccess.Read, FileShare.Delete);
                     FileStreamResult fileStreamResult = new FileStreamResult(fileStreamInput, "APPLICATION/octet-stream");
-                    fileStreamResult.FileDownloadName = "Files.zip";
+                    fileStreamResult.FileDownloadName = selectedItems.Count() == 1 ? selectedItems[0].Name + ".zip" : "Files.zip";
                     if (File.Exists(Path.Combine(Path.GetTempPath(), "temp.zip")))
                     {
                         File.Delete(Path.Combine(Path.GetTempPath(), "temp.zip"));
@@ -634,23 +612,26 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Download folder(s) from the storage
-        private async Task DownloadFolder(string path, string fileName, ZipArchiveEntry zipEntry, ZipArchive archive)
+        private async Task DownloadFolder(string path, string folderName, ZipArchiveEntry zipEntry, ZipArchive archive)
         {
             CloudBlobDirectory sampleDirectory = container.GetDirectoryReference(pathValue);
             BlobResultSegment items = await AsyncReadCall(pathValue, "Read");
+            zipEntry = archive.CreateEntry(this.currentFolderName + "/");
             foreach (IListBlobItem item in items.Results)
             {
                 if (item is CloudBlockBlob blockBlob)
                 {
                     CloudBlockBlob blob = container.GetBlockBlobReference(new CloudBlockBlob(item.Uri).Name);
                     await blob.FetchAttributesAsync();
+                    int index = blob.Name.LastIndexOf("/");
+                    string fileName = blob.Name.Substring(index + 1);
                     string absoluteFilePath = Path.GetTempPath() + blob.Name.Split("/").Last();
                     if (File.Exists(absoluteFilePath))
                     {
                         File.Delete(absoluteFilePath);
                     }
                     await CopyFileToTemp(absoluteFilePath, blob);
-                    zipEntry = archive.CreateEntryFromFile(absoluteFilePath, (fileName.Contains(this.rootPath) ? fileName.Replace(this.rootPath + "/", "") : fileName).Replace("/", "\\") + "\\" + blob.Name.Split("/").Last(), CompressionLevel.Fastest);
+                    zipEntry = archive.CreateEntryFromFile(absoluteFilePath, this.currentFolderName + "\\" + fileName, CompressionLevel.Fastest);
                     if (File.Exists(absoluteFilePath))
                     {
                         File.Delete(absoluteFilePath);
@@ -661,7 +642,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     string absoluteFilePath = item.Uri.ToString().Replace(this.blobPath, ""); // <-- Change your download target path here
                     pathValue = absoluteFilePath;
                     string targetPath = item.Uri.ToString().Replace(this.filesPath + "/", "");
-                    await DownloadFolder(absoluteFilePath, targetPath.Substring(0, targetPath.Length - 1), zipEntry, archive);
+                    string folderPath = new DirectoryInfo(targetPath).Name;
+                    this.previousFolderName = this.currentFolderName = (this.initialFolderName == folderName ? folderName : this.previousFolderName) + "/" + folderPath;
+                    await DownloadFolder(absoluteFilePath, folderPath, zipEntry, archive);
                 }
             }
         }
