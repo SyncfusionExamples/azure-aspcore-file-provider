@@ -854,7 +854,14 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Returns the image 
         public FileStreamResult GetImage(string path, string id, bool allowCompress, ImageSize size, params FileManagerDirectoryContent[] data)
         {
-            return new FileStreamResult((new MemoryStream(new WebClient().DownloadData(this.filesPath + path))), "APPLICATION/octet-stream");
+            try
+            {
+                return new FileStreamResult((new MemoryStream(new WebClient().DownloadData(this.filesPath + path))), "APPLICATION/octet-stream");
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
         }
 
         private async Task MoveItems(string sourcePath, string targetPath, string name, string newName)
