@@ -16,11 +16,17 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
     public class AzureProviderController : Controller
     {
         public AzureFileProvider operation;
+        public string blobPath { get; set; }
+        public string filePath { get; set;}
         public AzureProviderController(IHostingEnvironment hostingEnvironment)
         {
             this.operation = new AzureFileProvider();
+            blobPath = "<--blobPath-->";
+            filePath = "<--filePath-->";
+            blobPath = (blobPath.Substring(blobPath.Length - 1) != "/") ? blobPath + "/" : blobPath.TrimEnd(new[] { '/', '\\' }) + "/";
+            filePath = (filePath.Substring(filePath.Length - 1) == "/") ? filePath.TrimEnd(new[] { '/', '\\' }) : filePath;
             this.operation.RegisterAzure("<--accountName-->", "<--accountKey-->", "<--blobName-->");
-            this.operation.SetBlobContainer("<--blobPath-->", "<--filePath-->");
+            this.operation.SetBlobContainer(blobPath, filePath);
             //----------
             //For example 
             //this.operation.RegisterAzure("azure_service_account", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "files");
@@ -32,8 +38,8 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         {
             if (args.Path != "")
             {
-                string startPath = "<--blobPath-->";
-                string originalPath = ("<--filePath-->").Replace(startPath, "");
+                string startPath = blobPath;
+                string originalPath = (filePath).Replace(startPath, "");
                 //-----------------
                 //For example
                 //string startPath = "https://azure_service_account.blob.core.windows.net/files/";
@@ -88,8 +94,8 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         {
             if (args.Path != "")
             {
-                string startPath = "<--blobPath-->";
-                string originalPath = ("<--filePath-->").Replace(startPath, "");
+                string startPath = blobPath;
+                string originalPath = (filePath).Replace(startPath, "");
                 args.Path = (originalPath + args.Path).Replace("//", "/");
                 //----------------------
                 //For example
