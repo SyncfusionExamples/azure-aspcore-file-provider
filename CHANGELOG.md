@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Azure Cloud File System Provider
+
+#### New Features
+
+- `#298725` - Azure file provider service has been updated to Azure Blobs Storage NuGet package.
+
 ## 18.1.42 (2020-04-01)
 
 ### Azure Cloud File System Provider
