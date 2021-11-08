@@ -1,32 +1,52 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-   <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
-	<MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
-    <RootNamespace>Syncfusion.EJ2.FileManager.AzureFileProvider</RootNamespace>
-    <AssemblyName>Syncfusion.EJ2.FileManager.AzureFileProvider</AssemblyName>
-    <AssemblyVersion>17.4.0.43</AssemblyVersion>
-    <FileVersion>17.4.0.43</FileVersion>
-    <Version>17.4.0.43</Version>
-    <Product>Syncfusion file manager Azure file provider for Essential JS 2</Product>    
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
+    <AssemblyVersion>19.3.0.44</AssemblyVersion>
+    <FileVersion>19.3.0.44</FileVersion>
+    <Version>19.3.0.44</Version>
+    <PackageId>Syncfusion.EJ2.FileManager.AzureFileProvider.AspNet.Core</PackageId>
+    <Title>Syncfusion ASP.NET Core EJ2 FileManager Azure File system Provider</Title>
     <Company>Syncfusion Inc.</Company>
-    <PackageId>Syncfusion.EJ2.FileManager.AzureFileProvider</PackageId>
-    <PackageTags>Syncfusion;EJ2;AzureFileProvider</PackageTags>
-    <PackageIconUrl>http://www.syncfusion.com/content/images/nuget/sync_logo_icon.png</PackageIconUrl>
-    <PackageProjectUrl>http://www.syncfusion.com</PackageProjectUrl>
-    <PackageLicenseUrl>http://www.syncfusion.com/nuget/license</PackageLicenseUrl>
+    <Authors>Syncfusion Inc.</Authors>
+    <Product>Syncfusion file manager Azure file provider for Essential JS 2</Product>
+    <Copyright>Copyright 2001 - 2021 Syncfusion Inc.</Copyright>
+    <PackageIcon>syncfusion_logo.png</PackageIcon>
+    <AssemblyName>Syncfusion.EJ2.FileManager.AzureFileProvider.AspNet.Core</AssemblyName>
+    <RootNamespace>Syncfusion.EJ2.FileManager.AzureFileProvider.AspNet.Core</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <PackageProjectUrl>https://www.syncfusion.com/?utm_source=nuget&amp;utm_medium=listing</PackageProjectUrl>
+    <PackageDescription>This package provides the functionality to utilize the features of Syncfusion EJ2 FileManager component in Azure blob storage and more.</PackageDescription>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>https://ej2.syncfusion.com/aspnetcore/documentation/release-notes/19.3.43/?utm_source=nuget&amp;utm_medium=listing</PackageReleaseNotes>
+    <PackageTags>
+      syncfusion,
+      essentialjs2,
+      ej2,
+      javascript,
+      ui,
+      controls,
+      components,
+      file manager,
+      file explorer,
+      syncfusion, filemanager, syncfusion.ej2,
+      js, asp-core, aspnetcore, net-core,
+      NETStandard, .net,
+      file provider, azure file provider, file system
+    </PackageTags>
+
     <Configurations>Debug;Release;Release-Xml</Configurations>
-    <Configuration></Configuration>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Folder Include="wwwroot\" />
-  </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.1.2" PrivateAssets="All" />
-    <PackageReference Include="WindowsAzure.Storage" Version="9.3.3" />
-	<PackageReference Include="Syncfusion.EJ2.AspNet.Core" Version="*" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.10.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+	<PackageReference Include="Syncfusion.EJ2.AspNet.Core" Version="*" /
   </ItemGroup>
 
 </Project>
