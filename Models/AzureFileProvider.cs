@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -12,13 +13,12 @@ using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Syncfusion.EJ2.FileManager.Base;
-using System.Text;
 
 namespace Syncfusion.EJ2.FileManager.AzureFileProvider
 {
     public class AzureFileProvider : AzureFileProviderBase
     {
-        List<FileManagerDirectoryContent> directoryContentItems = new();
+        List<FileManagerDirectoryContent> directoryContentItems = new List<FileManagerDirectoryContent>();
         BlobContainerClient container;
         string pathValue;
         string blobPath;
@@ -28,10 +28,10 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         string currentFolderName = "";
         string previousFolderName = "";
         string initialFolderName = "";
-        List<string> existFiles = new();
-        List<string> missingFiles = new();
+        List<string> existFiles = new List<string>();
+        List<string> missingFiles = new List<string>();
         bool isFolderAvailable = false;
-        List<FileManagerDirectoryContent> copiedFiles = new();
+        List<FileManagerDirectoryContent> copiedFiles = new List<FileManagerDirectoryContent>();
         DateTime lastUpdated = DateTime.MinValue;
         DateTime prevUpdated = DateTime.MinValue;
 
@@ -50,7 +50,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Reads the storage 
-        public FileManagerResponse GetFiles(string path, FileManagerDirectoryContent[] selectedItems)
+        public FileManagerResponse GetFiles(string path, bool showHiddenItems, FileManagerDirectoryContent[] selectedItems)
         {
             return GetFilesAsync(path, "*.*", selectedItems).GetAwaiter().GetResult();
         }
@@ -58,10 +58,10 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Reads the storage files
         protected async Task<FileManagerResponse> GetFilesAsync(string path, string filter, FileManagerDirectoryContent[] selectedItems)
         {
-            FileManagerResponse readResponse = new();
-            List<string> prefixes = new() { };
-            List<FileManagerDirectoryContent> details = new();
-            FileManagerDirectoryContent cwd = new();
+            FileManagerResponse readResponse = new FileManagerResponse();
+            List<string> prefixes = new List<string>() { };
+            List<FileManagerDirectoryContent> details = new List<FileManagerDirectoryContent>();
+            FileManagerDirectoryContent cwd = new FileManagerDirectoryContent();
             try
             {
                 string[] extensions = ((filter.Replace(" ", "")) ?? "*").Split(",|;".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
@@ -82,7 +82,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         }
                         if (includeItem)
                         {
-                            FileManagerDirectoryContent entry = new();
+                            FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
                             entry.Name = item.Name.Replace(path, "");
                             entry.Type = System.IO.Path.GetExtension(item.Name.Replace(path, ""));
                             entry.IsFile = true;
@@ -99,7 +99,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
 
                         if (includeItem)
                         {
-                            FileManagerDirectoryContent entry = new();
+                            FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
                             string directory = item;
                             entry.Name = directory.Replace(path, "").Replace("/", "");
                             entry.Type = "Directory";
@@ -183,21 +183,21 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             bool isVariousFolders = false;
             string previousPath = "";
             string previousName = "";
-            FileManagerResponse detailsResponse = new();
+            FileManagerResponse detailsResponse = new FileManagerResponse();
             try
             {
                 bool isFile = false;
                 bool namesAvailable = names.Length > 0;
                 if (names.Length == 0 && selectedItems != null)
                 {
-                    List<string> values = new();
+                    List<string> values = new List<string>();
                     foreach (FileManagerDirectoryContent item in selectedItems)
                     {
                         values.Add(item.Name);
                     }
                     names = values.ToArray();
                 }
-                FileDetails fileDetails = new();
+                FileDetails fileDetails = new FileDetails();
                 long multipleSize = 0;
                 if (selectedItems != null)
                 {
@@ -220,7 +220,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                 long sizeValue = GetSizeValue((namesAvailable ? rootPath + fileItem.FilterPath + fileItem.Name : path.TrimEnd('/'))).Result;
                                 isFile = false;
                                 fileDetails.Name = fileItem.Name;
-                                fileDetails.Location = (namesAvailable ? rootPath + fileItem.FilterPath + fileItem.Name : path[0..^1]).Replace("/", @"\");
+                                fileDetails.Location = (namesAvailable ? rootPath + fileItem.FilterPath + fileItem.Name : path.Substring(0, path.Length - 1)).Replace("/", @"\");
                                 fileDetails.Size = ByteConversion(sizeValue); fileDetails.Modified = await DirectoryLastModified(path); detailsResponse.Details = fileDetails;
                             }
                         }
@@ -260,17 +260,17 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         {
             this.isFolderAvailable = false;
             CreateFolderAsync(path, name, selectedItems).GetAwaiter().GetResult();
-            FileManagerResponse createResponse = new();
+            FileManagerResponse createResponse = new FileManagerResponse();
             if (!this.isFolderAvailable)
             {
-                FileManagerDirectoryContent content = new();
+                FileManagerDirectoryContent content = new FileManagerDirectoryContent();
                 content.Name = name;
                 FileManagerDirectoryContent[] directories = new[] { content };
                 createResponse.Files = (IEnumerable<FileManagerDirectoryContent>)directories;
             }
             else
             {
-                ErrorDetails error = new();
+                ErrorDetails error = new ErrorDetails();
                 error.FileExists = existFiles;
                 error.Code = "400";
                 error.Message = "Folder Already Exists";
@@ -307,9 +307,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Renames file(s) or folder(s)
         protected async Task<FileManagerResponse> RenameAsync(string path, string oldName, string newName, params FileManagerDirectoryContent[] selectedItems)
         {
-            FileManagerResponse renameResponse = new();
-            List<FileManagerDirectoryContent> details = new();
-            FileManagerDirectoryContent entry = new();
+            FileManagerResponse renameResponse = new FileManagerResponse();
+            List<FileManagerDirectoryContent> details = new List<FileManagerDirectoryContent>();
+            FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
             bool isAlreadyAvailable = false;
             bool isFile = false;
             foreach (FileManagerDirectoryContent fileItem in selectedItems)
@@ -350,7 +350,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             }
             else
             {
-                ErrorDetails error = new();
+                ErrorDetails error = new ErrorDetails();
                 error.FileExists = existFiles;
                 error.Code = "400";
                 error.Message = "File or Folder Already Exists";
@@ -368,9 +368,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Deletes file(s) or folder(s)
         protected async Task<FileManagerResponse> RemoveAsync(string[] names, string path, params FileManagerDirectoryContent[] selectedItems)
         {
-            FileManagerResponse removeResponse = new();
-            List<FileManagerDirectoryContent> details = new();
-            FileManagerDirectoryContent entry = new();
+            FileManagerResponse removeResponse = new FileManagerResponse();
+            List<FileManagerDirectoryContent> details = new List<FileManagerDirectoryContent>();
+            FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
             foreach (FileManagerDirectoryContent fileItem in selectedItems)
             {
                 if (fileItem.IsFile)
@@ -379,7 +379,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     BlobClient currentFile = container.GetBlobClient(path + fileItem.Name);
                     currentFile.DeleteIfExists();
                     string absoluteFilePath = Path.Combine(Path.GetTempPath(), fileItem.Name);
-                    DirectoryInfo tempDirectory = new(Path.GetTempPath());
+                    DirectoryInfo tempDirectory = new DirectoryInfo(Path.GetTempPath());
                     foreach (string file in Directory.GetFiles(tempDirectory.ToString()))
                     {
                         if (file.ToString() == absoluteFilePath)
@@ -428,7 +428,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Upload file(s) to the storage
         protected async Task<FileManagerResponse> UploadAsync(IEnumerable<IFormFile> files, string action, string path, IEnumerable<object> selectedItems = null)
         {
-            FileManagerResponse uploadResponse = new();
+            FileManagerResponse uploadResponse = new FileManagerResponse();
             try
             {
                 foreach (IFormFile file in files)
@@ -481,7 +481,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 }
                 if (existFiles.Count != 0)
                 {
-                    ErrorDetails error = new();
+                    ErrorDetails error = new ErrorDetails();
                     error.FileExists = existFiles;
                     error.Code = "400";
                     error.Message = "File Already Exists";
@@ -515,7 +515,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             {
                 if (file.IsFile && selectedItems.Length == 1)
                 {
-                    FileStreamResult fileStreamResult = new(new MemoryStream(new WebClient().DownloadData(filesPath + (names[0].Contains('/') ? '/' + names[0] : selectedItems[0].FilterPath + names[0]))), "APPLICATION/octet-stream");
+                    FileStreamResult fileStreamResult = new FileStreamResult(new MemoryStream(new WebClient().DownloadData(filesPath + (names[0].Contains('/') ? '/' + names[0] : selectedItems[0].FilterPath + names[0]))), "APPLICATION/octet-stream");
                     fileStreamResult.FileDownloadName = file.Name;
                     return fileStreamResult;
                 }
@@ -560,8 +560,8 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         }
                     }
                     archive.Dispose();
-                    FileStream fileStreamInput = new(tempPath, FileMode.Open, FileAccess.Read, FileShare.Delete);
-                    FileStreamResult fileStreamResult = new(fileStreamInput, "APPLICATION/octet-stream");
+                    FileStream fileStreamInput = new FileStream(tempPath, FileMode.Open, FileAccess.Read, FileShare.Delete);
+                    FileStreamResult fileStreamResult = new FileStreamResult(fileStreamInput, "APPLICATION/octet-stream");
                     fileStreamResult.FileDownloadName = selectedItems.Length == 1 && selectedItems[0].Name != "" ? selectedItems[0].Name + ".zip" : "Files.zip";
                     if (File.Exists(Path.Combine(Path.GetTempPath(), "temp.zip")))
                     {
@@ -611,7 +611,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Check whether the directory has child
         private async Task<bool> HasChildDirectory(string path)
         {
-            List<string> prefixes = new() { };
+            List<string> prefixes = new List<string>() { };
             await foreach (Azure.Page<BlobHierarchyItem> page in container.GetBlobsByHierarchyAsync(prefix: path, delimiter: "/").AsPages())
             {
                 prefixes = page.Values.Where(item => item.IsPrefix).Select(item => item.Prefix).ToList();
@@ -622,7 +622,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // To get the file details
         private static FileManagerDirectoryContent GetFileDetails(string targetPath, FileManagerDirectoryContent fileDetails)
         {
-            FileManagerDirectoryContent entry = new();
+            FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
             entry.Name = fileDetails.Name;
             entry.Type = fileDetails.Type;
             entry.IsFile = fileDetails.IsFile;
@@ -635,7 +635,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // To check if folder exists
         private async Task<bool> IsFolderExists(string path)
         {
-            List<string> x = new() { };
+            List<string> x = new List<string>() { };
             await foreach (Azure.Page<BlobHierarchyItem> page in container.GetBlobsByHierarchyAsync(prefix: path, delimiter: "/").AsPages())
             {
                 x = page.Values.Where(item => item.IsPrefix).Select(item => item.Prefix).ToList();
@@ -658,7 +658,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
 
         private async Task<FileManagerResponse> CopyToAsync(string path, string targetPath, string[] names, string[] renamedFiles = null, params FileManagerDirectoryContent[] data)
         {
-            FileManagerResponse copyResponse = new();
+            FileManagerResponse copyResponse = new FileManagerResponse();
             try
             {
                 renamedFiles ??= Array.Empty<string>();
@@ -727,7 +727,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 copyResponse.Files = copiedFiles;
                 if (existFiles.Count > 0)
                 {
-                    ErrorDetails error = new();
+                    ErrorDetails error = new ErrorDetails();
                     error.FileExists = existFiles;
                     error.Code = "400";
                     error.Message = "File Already Exists";
@@ -746,7 +746,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             }
             catch (Exception e)
             {
-                ErrorDetails error = new();
+                ErrorDetails error = new ErrorDetails();
                 error.Code = "404";
                 error.Message = e.Message.ToString();
                 error.FileExists = copyResponse.Error?.FileExists;
@@ -769,7 +769,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 }
                 foreach (string item in page.Values.Where(item => item.IsPrefix).Select(item => item.Prefix))
                 {
-                    FileManagerDirectoryContent itemDetail = new();
+                    FileManagerDirectoryContent itemDetail = new FileManagerDirectoryContent();
                     itemDetail.Name = item.Replace(subFolder.Path, "").Replace("/", "");
                     itemDetail.Path = subFolder.Path + "/" + itemDetail.Name;
                     CopySubFolder(itemDetail, targetPath);
@@ -832,7 +832,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 }
                 foreach (string item in page.Values.Where(item => item.IsPrefix).Select(item => item.Prefix))
                 {
-                    FileManagerDirectoryContent itemDetail = new();
+                    FileManagerDirectoryContent itemDetail = new FileManagerDirectoryContent();
                     itemDetail.Name = item.Replace(subFolder.Path, "").Replace("/", "");
                     itemDetail.Path = subFolder.Path + "/" + itemDetail.Name;
                     CopySubFolder(itemDetail, targetPath);
@@ -848,7 +848,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
 
         private async Task<FileManagerResponse> MoveToAsync(string path, string targetPath, string[] names, string[] renamedFiles = null, params FileManagerDirectoryContent[] data)
         {
-            FileManagerResponse moveResponse = new();
+            FileManagerResponse moveResponse = new FileManagerResponse();
             try
             {
                 renamedFiles ??= Array.Empty<string>();
@@ -916,7 +916,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 moveResponse.Files = copiedFiles;
                 if (existFiles.Count > 0)
                 {
-                    ErrorDetails error = new();
+                    ErrorDetails error = new ErrorDetails();
                     error.FileExists = existFiles;
                     error.Code = "400";
                     error.Message = "File Already Exists";
@@ -935,7 +935,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             }
             catch (Exception e)
             {
-                ErrorDetails error = new();
+                ErrorDetails error = new ErrorDetails();
                 error.Code = "404";
                 error.Message = e.Message.ToString();
                 error.FileExists = moveResponse.Error?.FileExists;
@@ -948,7 +948,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         public FileManagerResponse Search(string path, string searchString, bool showHiddenItems, bool caseSensitive, params FileManagerDirectoryContent[] data)
         {
             directoryContentItems.Clear();
-            FileManagerResponse searchResponse = GetFiles(path, data);
+            FileManagerResponse searchResponse = GetFiles(path, showHiddenItems, data);
             directoryContentItems.AddRange(searchResponse.Files);
             GetAllFiles(path, searchResponse);
             searchResponse.Files = directoryContentItems.Where(item => new Regex(WildcardToRegex(searchString), (caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase)).IsMatch(item.Name));
@@ -958,11 +958,11 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Gets all files
         protected virtual void GetAllFiles(string path, FileManagerResponse data)
         {
-            FileManagerResponse directoryList = new();
+            FileManagerResponse directoryList = new FileManagerResponse();
             directoryList.Files = data.Files.Where(item => item.IsFile == false);
             for (int i = 0; i < directoryList.Files.Count(); i++)
             {
-                FileManagerResponse innerData = GetFiles(path + directoryList.Files.ElementAt(i).Name + "/", (new[] { directoryList.Files.ElementAt(i) }));
+                FileManagerResponse innerData = GetFiles(path + directoryList.Files.ElementAt(i).Name + "/", true, (new[] { directoryList.Files.ElementAt(i) }));
                 innerData.Files = innerData.Files.Select(file => new FileManagerDirectoryContent
                 {
                     Name = file.Name,
@@ -980,11 +980,6 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         protected virtual string WildcardToRegex(string pattern)
         {
             return "^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
-        }
-
-        public FileManagerResponse GetFiles(string path, bool showHiddenItems, params FileManagerDirectoryContent[] data)
-        {
-            throw new NotImplementedException();
         }
     }
 }
