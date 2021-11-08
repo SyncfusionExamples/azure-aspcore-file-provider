@@ -17,7 +17,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
     {
         public AzureFileProvider operation;
         public string blobPath { get; set; }
-        public string filePath { get; set;}
+        public string filePath { get; set; }
         public AzureProviderController(IHostingEnvironment hostingEnvironment)
         {
             this.operation = new AzureFileProvider();
@@ -25,12 +25,12 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
             filePath = "<--filePath-->";
             blobPath = (blobPath.Substring(blobPath.Length - 1) != "/") ? blobPath + "/" : blobPath.TrimEnd(new[] { '/', '\\' }) + "/";
             filePath = (filePath.Substring(filePath.Length - 1) == "/") ? filePath.TrimEnd(new[] { '/', '\\' }) : filePath;
+            this.operation.SetBlobContainer(blobPath, filePath);            
             this.operation.RegisterAzure("<--accountName-->", "<--accountKey-->", "<--blobName-->");
-            this.operation.SetBlobContainer(blobPath, filePath);
             //----------
             //For example 
-            //this.operation.RegisterAzure("azure_service_account", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "files");
             //this.operation.setBlobContainer("https://azure_service_account.blob.core.windows.net/files/", "https://azure_service_account.blob.core.windows.net/files/Files");
+            //this.operation.RegisterAzure("azure_service_account", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "files");
             //---------
         }
         [Route("AzureFileOperations")]

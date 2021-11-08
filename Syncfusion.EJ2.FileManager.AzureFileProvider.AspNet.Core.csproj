@@ -23,9 +23,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.11.0-beta.1" />
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.1.2" PrivateAssets="All" />
-    <PackageReference Include="WindowsAzure.Storage" Version="9.3.3" />
 	<PackageReference Include="Syncfusion.EJ2.AspNet.Core" Version="*" />
   </ItemGroup>
 
