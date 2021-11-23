@@ -1,6 +1,6 @@
-# ej2-azure-aspcore-file-provider
+# azure-aspcore-file-provider
 
-This repository contains the ASP.NET Core Azure storage file system providers for the Essential JS 2 File Manager component.
+This repository contains the ASP.NET Core Azure storage file system providers for the Syncfusion File Manager component.
 
 ## Key Features
 
@@ -33,15 +33,15 @@ In order to run the service, we need to create the [Azure blob storage account](
 
 ## How to run this application?
 
-To run this application, clone the [`ej2-azure-aspcore-file-provider`](https://github.com/ej2-azure-aspcore-file-provider) repository and then navigate to its appropriate path where it has been located in your system.
+To run this application, clone the [`azure-aspcore-file-provider`](https://github.com/azure-aspcore-file-provider) repository and then navigate to its appropriate path where it has been located in your system.
 
 To do so, open the command prompt and run the below commands one after the other.
 
 ```
 
-git clone https://github.com/ej2-azure-aspcore-file-provider  ej2-azure-aspcore-file-provider
+git clone https://github.com/azure-aspcore-file-provider  azure-aspcore-file-provider
 
-cd ej2-azure-aspcore-file-provider
+cd azure-aspcore-file-provider
 
 ```
 
