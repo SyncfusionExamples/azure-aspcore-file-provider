@@ -64,6 +64,16 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             FileManagerDirectoryContent cwd = new FileManagerDirectoryContent();
             try
             {
+                var blobPages = container.GetBlobsAsync(prefix: path).AsPages().GetAsyncEnumerator();
+                await blobPages.MoveNextAsync();
+                bool directoryExists = blobPages.Current.Values.Count() > 0;
+                if (!directoryExists) {
+                    ErrorDetails er = new ErrorDetails();
+                    er.Message = "Could not find a part of the path " + "'" + path + "'" + ".";
+                    er.Code = "417";
+                    readResponse.Error = er;
+                    return readResponse;
+                }
                 string[] extensions = ((filter.Replace(" ", "")) ?? "*").Split(",|;".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
                 cwd.Name = selectedItems.Length > 0 ? selectedItems[0].Name : rootPath;
                 var sampleDirectory = container.GetBlobClient(path);
