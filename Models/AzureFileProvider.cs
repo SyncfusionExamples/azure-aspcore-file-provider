@@ -16,7 +16,7 @@ using System.Text;
 
 namespace Syncfusion.EJ2.FileManager.AzureFileProvider
 {
-    public class AzureFileProvider : AzureFileProviderBase
+    public class AzureFileProvider : IAzureFileProviderBase
     {
         List<FileManagerDirectoryContent> directoryContentItems = new List<FileManagerDirectoryContent>();
         BlobContainerClient container;
@@ -39,6 +39,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         public void RegisterAzure(string accountName, string accountKey, string blobName)
         {
             container = new BlobServiceClient(new Uri(blobPath.Substring(0, blobPath.Length - blobName.Length - 1)), new StorageSharedKeyCredential(accountName, accountKey), null).GetBlobContainerClient(blobName);
+            
         }
 
         // Sets blob and file path
