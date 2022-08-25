@@ -20,6 +20,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
     {
         List<FileManagerDirectoryContent> directoryContentItems = new List<FileManagerDirectoryContent>();
         BlobContainerClient container;
+        AccessDetails AccessDetails = new AccessDetails();
+        private string rootName = string.Empty;
+        private string accessMessage = string.Empty;
         string pathValue;
         string blobPath;
         string filesPath;
@@ -50,6 +53,12 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             rootPath = filesPath.Replace(blobPath, "");
         }
 
+        public void SetRules(AccessDetails details)
+        {
+            this.AccessDetails = details;
+            DirectoryInfo root = new DirectoryInfo(this.rootPath);
+            this.rootName = root.Name;
+        }
         // Reads the storage 
         public FileManagerResponse GetFiles(string path, bool showHiddenItems, FileManagerDirectoryContent[] selectedItems)
         {
@@ -81,6 +90,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 cwd.Type = "File Folder";
                 cwd.FilterPath = selectedItems.Length > 0 ? selectedItems[0].FilterPath : "";
                 cwd.Size = 0;
+                cwd.Permission = GetPathPermission(path, false);
                 foreach (Azure.Page<BlobHierarchyItem> page in container.GetBlobsByHierarchy(prefix: path, delimiter: "/").AsPages())
                 {
                     foreach (BlobItem item in page.Values.Where(item => item.IsBlob).Select(item => item.Blob))
@@ -101,6 +111,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             entry.DateModified = item.Properties.LastModified.Value.LocalDateTime;
                             entry.HasChild = false;
                             entry.FilterPath = selectedItems.Length > 0 ? path.Replace(rootPath, "") : "/";
+                            entry.Permission = GetPermission(item.Name.Replace(entry.Name, ""), entry.Name, true);
                             details.Add(entry);
                         }
                     }
@@ -119,6 +130,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             entry.HasChild = await HasChildDirectory(directory);
                             entry.FilterPath = selectedItems.Length > 0 ? path.Replace(rootPath, "") : "/";
                             entry.DateModified = await DirectoryLastModified(directory);
+                            entry.Permission = GetPathPermission(directory, false);
                             lastUpdated = prevUpdated = DateTime.MinValue;
                             details.Add(entry);
                         }
@@ -130,6 +142,24 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             }
             catch (Exception)
             {
+                return readResponse;
+            }
+            try
+            {
+                if ((cwd.Permission != null && !cwd.Permission.Read))
+                {
+                    readResponse.Files = null;
+                    accessMessage = cwd.Permission.Message;
+                    throw new UnauthorizedAccessException("'" + cwd.Name + "' is not accessible. You need permission to perform the read action.");
+                }
+            }
+            catch (Exception e)
+            {
+                ErrorDetails er = new ErrorDetails();
+                er.Message = e.Message.ToString();
+                er.Code = er.Message.Contains("is not accessible. You need permission") ? "401" : "417";
+                if ((er.Code == "401") && !string.IsNullOrEmpty(accessMessage)) { er.Message = accessMessage; }
+                readResponse.Error = er;
                 return readResponse;
             }
             readResponse.Files = details;
@@ -270,24 +300,42 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         public FileManagerResponse Create(string path, string name, params FileManagerDirectoryContent[] selectedItems)
         {
             this.isFolderAvailable = false;
-            CreateFolderAsync(path, name, selectedItems).GetAwaiter().GetResult();
             FileManagerResponse createResponse = new FileManagerResponse();
-            if (!this.isFolderAvailable)
+            AccessPermission PathPermission = GetPathPermission(path, false);
+            try
             {
-                FileManagerDirectoryContent content = new FileManagerDirectoryContent();
-                content.Name = name;
-                FileManagerDirectoryContent[] directories = new[] { content };
-                createResponse.Files = (IEnumerable<FileManagerDirectoryContent>)directories;
+                if (PathPermission != null && (!PathPermission.Read || !PathPermission.WriteContents))
+                {
+                    accessMessage = PathPermission.Message;
+                    throw new UnauthorizedAccessException("'" + this.getFileNameFromPath(path) + "' is not accessible. You need permission to perform the writeContents action.");
+                }
+                CreateFolderAsync(path, name, selectedItems).GetAwaiter().GetResult();
+                if (!this.isFolderAvailable)
+                {
+                    FileManagerDirectoryContent content = new FileManagerDirectoryContent();
+                    content.Name = name;
+                    FileManagerDirectoryContent[] directories = new[] { content };
+                    createResponse.Files = (IEnumerable<FileManagerDirectoryContent>)directories;
+                }
+                else
+                {
+                    ErrorDetails error = new ErrorDetails();
+                    error.FileExists = existFiles;
+                    error.Code = "400";
+                    error.Message = "Folder Already Exists";
+                    createResponse.Error = error;
+                }
+                return createResponse;
             }
-            else
+            catch (Exception e)
             {
-                ErrorDetails error = new ErrorDetails();
-                error.FileExists = existFiles;
-                error.Code = "400";
-                error.Message = "Folder Already Exists";
-                createResponse.Error = error;
+                ErrorDetails er = new ErrorDetails();
+                er.Message = e.Message.ToString();
+                er.Code = er.Message.Contains("is not accessible. You need permission") ? "401" : "417";
+                if ((er.Code == "401") && !string.IsNullOrEmpty(accessMessage)) { er.Message = accessMessage; }
+                createResponse.Error = er;
+                return createResponse;
             }
-            return createResponse;
         }
 
         // Creates a new folder
@@ -321,53 +369,71 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             FileManagerResponse renameResponse = new FileManagerResponse();
             List<FileManagerDirectoryContent> details = new List<FileManagerDirectoryContent>();
             FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
-            bool isAlreadyAvailable = false;
-            bool isFile = false;
-            foreach (FileManagerDirectoryContent fileItem in selectedItems)
+            try
             {
-                FileManagerDirectoryContent directoryContent = fileItem;
-                isFile = directoryContent.IsFile;
-                isAlreadyAvailable = isFile ? await IsFileExists(path + newName) : await IsFolderExists(path + newName);
-                entry.Name = newName;
-                entry.Type = directoryContent.Type;
-                entry.IsFile = isFile;
-                entry.Size = directoryContent.Size;
-                entry.HasChild = directoryContent.HasChild;
-                entry.FilterPath = path;
-                details.Add(entry);
-                break;
-            }
-            if (!isAlreadyAvailable)
-            {
-                if (isFile)
+                AccessPermission permission = GetPermission(GetPath(path), oldName, selectedItems[0].IsFile);
+                if (permission != null && (!permission.Read || !permission.Write))
                 {
-                    BlobClient existBlob = container.GetBlobClient(path + oldName);
-                    await (container.GetBlobClient(path + newName)).StartCopyFromUriAsync(existBlob.Uri);
-                    await existBlob.DeleteAsync();
+                    accessMessage = permission.Message;
+                    throw new UnauthorizedAccessException();
+                }
+                bool isAlreadyAvailable = false;
+                bool isFile = false;
+                foreach (FileManagerDirectoryContent fileItem in selectedItems)
+                {
+                    FileManagerDirectoryContent directoryContent = fileItem;
+                    isFile = directoryContent.IsFile;
+                    isAlreadyAvailable = isFile ? await IsFileExists(path + newName) : await IsFolderExists(path + newName);
+                    entry.Name = newName;
+                    entry.Type = directoryContent.Type;
+                    entry.IsFile = isFile;
+                    entry.Size = directoryContent.Size;
+                    entry.HasChild = directoryContent.HasChild;
+                    entry.FilterPath = path;
+                    details.Add(entry);
+                    break;
+                }
+                if (!isAlreadyAvailable)
+                {
+                    if (isFile)
+                    {
+                        BlobClient existBlob = container.GetBlobClient(path + oldName);
+                        await (container.GetBlobClient(path + newName)).StartCopyFromUriAsync(existBlob.Uri);
+                        await existBlob.DeleteAsync();
+                    }
+                    else
+                    {
+                        foreach (Azure.Page<BlobItem> page in container.GetBlobs(prefix: path + oldName + "/").AsPages())
+                        {
+                            foreach (BlobItem item in page.Values)
+                            {
+                                string name = container.GetBlobClient(item.Name).Uri.AbsolutePath.Replace(container.GetBlobClient(path + oldName).Uri.AbsolutePath + "/", "").Replace("%20", " ");
+                                await (container.GetBlobClient(path + newName + "/" + name)).StartCopyFromUriAsync(container.GetBlobClient(item.Name).Uri);
+                                await container.GetBlobClient(path + oldName + "/" + name).DeleteAsync();
+                            }
+                        }
+                    }
+                    renameResponse.Files = details;
                 }
                 else
                 {
-                    foreach (Azure.Page<BlobItem> page in container.GetBlobs(prefix: path + oldName + "/").AsPages())
-                    {
-                        foreach (BlobItem item in page.Values)
-                        {
-                            string name = container.GetBlobClient(item.Name).Uri.AbsolutePath.Replace(container.GetBlobClient(path + oldName).Uri.AbsolutePath + "/", "").Replace("%20", " ");
-                            await (container.GetBlobClient(path + newName + "/" + name)).StartCopyFromUriAsync(container.GetBlobClient(item.Name).Uri);
-                            await container.GetBlobClient(path + oldName + "/" + name).DeleteAsync();
-                        }
-                    }
+                    ErrorDetails error = new ErrorDetails();
+                    error.FileExists = existFiles;
+                    error.Code = "400";
+                    error.Message = "File or Folder Already Exists";
+                    renameResponse.Error = error;
                 }
-                renameResponse.Files = details;
+                return renameResponse;
             }
-            else
+            catch (Exception e)
             {
-                ErrorDetails error = new ErrorDetails();
-                error.FileExists = existFiles;
-                error.Code = "400";
-                error.Message = "File or Folder Already Exists";
-                renameResponse.Error = error;
+                ErrorDetails er = new ErrorDetails();
+                er.Message = (e.GetType().Name == "UnauthorizedAccessException") ? "'" + this.getFileNameFromPath(path + oldName) + "' is not accessible. You need permission to perform the write action." : e.Message.ToString();
+                er.Code = er.Message.Contains("is not accessible. You need permission") ? "401" : "417";
+                if ((er.Code == "401") && !string.IsNullOrEmpty(accessMessage)) { er.Message = accessMessage; }
+                renameResponse.Error = er;
+                return renameResponse;
             }
-            return renameResponse;
         }
 
         // Deletes file(s) or folder(s)
@@ -382,39 +448,38 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             FileManagerResponse removeResponse = new FileManagerResponse();
             List<FileManagerDirectoryContent> details = new List<FileManagerDirectoryContent>();
             FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
-            foreach (FileManagerDirectoryContent fileItem in selectedItems)
+            try
             {
-                if (fileItem.IsFile)
+                foreach (FileManagerDirectoryContent item in selectedItems)
                 {
-                    path = filesPath.Replace(blobPath, "") + fileItem.FilterPath;
-                    BlobClient currentFile = container.GetBlobClient(path + fileItem.Name);
-                    currentFile.DeleteIfExists();
-                    string absoluteFilePath = Path.Combine(Path.GetTempPath(), fileItem.Name);
-                    DirectoryInfo tempDirectory = new DirectoryInfo(Path.GetTempPath());
-                    foreach (string file in Directory.GetFiles(tempDirectory.ToString()))
+                    AccessPermission permission = GetPermission(path, item.Name, item.IsFile);
+                    if (permission != null && (!permission.Read || !permission.Write))
                     {
-                        if (file.ToString() == absoluteFilePath)
-                        {
-                            File.Delete(file);
-                        }
+                        accessMessage = permission.Message;
+                        throw new UnauthorizedAccessException("'" + (path + item.Name) + "' is not accessible.  You need permission to perform the write action.");
                     }
-                    entry.Name = fileItem.Name;
-                    entry.Type = fileItem.Type;
-                    entry.IsFile = fileItem.IsFile;
-                    entry.Size = fileItem.Size;
-                    entry.HasChild = fileItem.HasChild;
-                    entry.FilterPath = path;
-                    details.Add(entry);
-                }
-                else
-                {
-                    path = filesPath.Replace(blobPath, "") + fileItem.FilterPath;
-                    foreach (Azure.Page<BlobItem> items in container.GetBlobs(prefix: path + fileItem.Name + "/").AsPages())
+                    AccessPermission PathPermission = GetPathPermission(path, item.IsFile);
+                    if (PathPermission != null && (!PathPermission.Read || !PathPermission.Write))
                     {
-                        foreach (BlobItem item in items.Values)
+                        accessMessage = permission.Message;
+                        throw new UnauthorizedAccessException("'" + this.getFileNameFromPath(path) + "' is not accessible.  You need permission to perform the write action.");
+                    }
+                }
+                foreach (FileManagerDirectoryContent fileItem in selectedItems)
+                {
+                    if (fileItem.IsFile)
+                    {
+                        path = filesPath.Replace(blobPath, "") + fileItem.FilterPath;
+                        BlobClient currentFile = container.GetBlobClient(path + fileItem.Name);
+                        currentFile.DeleteIfExists();
+                        string absoluteFilePath = Path.Combine(Path.GetTempPath(), fileItem.Name);
+                        DirectoryInfo tempDirectory = new DirectoryInfo(Path.GetTempPath());
+                        foreach (string file in Directory.GetFiles(tempDirectory.ToString()))
                         {
-                            BlobClient currentFile = container.GetBlobClient(item.Name);
-                            await currentFile.DeleteAsync();
+                            if (file.ToString() == absoluteFilePath)
+                            {
+                                File.Delete(file);
+                            }
                         }
                         entry.Name = fileItem.Name;
                         entry.Type = fileItem.Type;
@@ -424,7 +489,35 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         entry.FilterPath = path;
                         details.Add(entry);
                     }
+                    else
+                    {
+                        path = filesPath.Replace(blobPath, "") + fileItem.FilterPath;
+                        foreach (Azure.Page<BlobItem> items in container.GetBlobs(prefix: path + fileItem.Name + "/").AsPages())
+                        {
+                            foreach (BlobItem item in items.Values)
+                            {
+                                BlobClient currentFile = container.GetBlobClient(item.Name);
+                                await currentFile.DeleteAsync();
+                            }
+                            entry.Name = fileItem.Name;
+                            entry.Type = fileItem.Type;
+                            entry.IsFile = fileItem.IsFile;
+                            entry.Size = fileItem.Size;
+                            entry.HasChild = fileItem.HasChild;
+                            entry.FilterPath = path;
+                            details.Add(entry);
+                        }
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                ErrorDetails er = new ErrorDetails();
+                er.Message = e.Message.ToString();
+                er.Code = er.Message.Contains(" is not accessible.  You need permission") ? "401" : "417";
+                if ((er.Code == "401") && !string.IsNullOrEmpty(accessMessage)) { er.Message = accessMessage; }
+                removeResponse.Error = er;
+                return removeResponse;
             }
             removeResponse.Files = details;
             return removeResponse;
@@ -442,6 +535,12 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             FileManagerResponse uploadResponse = new FileManagerResponse();
             try
             {
+                AccessPermission PathPermission = GetPathPermission(path, false);
+                if (PathPermission != null && (!PathPermission.Read || !PathPermission.Upload))
+                {
+                    accessMessage = PathPermission.Message;
+                    throw new UnauthorizedAccessException("'" + this.getFileNameFromPath(path) + "' is not accessible. You need permission to perform the upload action.");
+                }
                 foreach (IFormFile file in files)
                 {
                     if (files != null)
@@ -499,9 +598,15 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     uploadResponse.Error = error;
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                throw;
+                ErrorDetails er = new ErrorDetails();
+
+                er.Message = (e.GetType().Name == "UnauthorizedAccessException") ? "'" + this.getFileNameFromPath(path) + "' is not accessible. You need permission to perform the upload action." : e.Message.ToString();
+                er.Code = er.Message.Contains("is not accessible. You need permission") ? "401" : "417";
+                if ((er.Code == "401") && !string.IsNullOrEmpty(accessMessage)) { er.Message = accessMessage; }
+                uploadResponse.Error = er;
+                return uploadResponse;
             }
             return uploadResponse;
         }
@@ -524,64 +629,81 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Download file(s) from the storage
         protected async Task<FileStreamResult> DownloadAsync(string path, string[] names = null, params FileManagerDirectoryContent[] selectedItems)
         {
-            foreach (FileManagerDirectoryContent file in selectedItems)
+            try
             {
-                if (file.IsFile && selectedItems.Length == 1)
+                foreach (FileManagerDirectoryContent file in selectedItems)
                 {
-                    FileStreamResult fileStreamResult = new FileStreamResult(new MemoryStream(new WebClient().DownloadData(filesPath + (names[0].Contains('/') ? '/' + names[0] : selectedItems[0].FilterPath + names[0]))), "APPLICATION/octet-stream");
-                    fileStreamResult.FileDownloadName = file.Name;
-                    return fileStreamResult;
-                }
-                else
-                {
-                    ZipArchiveEntry zipEntry = null;
-                    ZipArchive archive;
-                    string tempPath = Path.Combine(Path.GetTempPath(), "temp.zip");
-                    using (archive = ZipFile.Open(tempPath, ZipArchiveMode.Update))
+                    AccessPermission FilePermission = GetPermission(path.Replace(this.blobPath, ""), file.Name, file.IsFile);
+                    if (FilePermission != null && (!FilePermission.Read || !FilePermission.Download))
                     {
-                        foreach (FileManagerDirectoryContent files in selectedItems)
+                        throw new UnauthorizedAccessException("'" + this.rootName + path + file.Name + "' is not accessible. Access is denied.");
+                    }
+                    AccessPermission FolderPermission = GetPathPermission(path.Replace(this.blobPath, ""), file.IsFile);
+                    if (FolderPermission != null && (!FolderPermission.Read || !FolderPermission.Download))
+                    {
+                        throw new UnauthorizedAccessException("'" + this.rootName + path + file.Name + "' is not accessible. Access is denied.");
+                    }
+                    if (file.IsFile && selectedItems.Length == 1)
+                    {
+                        FileStreamResult fileStreamResult = new FileStreamResult(new MemoryStream(new WebClient().DownloadData(filesPath + (names[0].Contains('/') ? '/' + names[0] : selectedItems[0].FilterPath + names[0]))), "APPLICATION/octet-stream");
+                        fileStreamResult.FileDownloadName = file.Name;
+                        return fileStreamResult;
+                    }
+                    else
+                    {
+                        ZipArchiveEntry zipEntry = null;
+                        ZipArchive archive;
+                        string tempPath = Path.Combine(Path.GetTempPath(), "temp.zip");
+                        using (archive = ZipFile.Open(tempPath, ZipArchiveMode.Update))
                         {
-                            if (String.IsNullOrEmpty(files.FilterPath))
+                            foreach (FileManagerDirectoryContent files in selectedItems)
                             {
-                                files.FilterPath = "/";
-                            }
-                            string relativeFilePath = filesPath + files.FilterPath;
-                            relativeFilePath = relativeFilePath.Replace(blobPath, "");
-                            currentFolderName = files.Name;
-                            if (files.IsFile)
-                            {
-                                BlobClient blockBlob = container.GetBlobClient(relativeFilePath + files.Name);
-                                if (File.Exists(Path.Combine(Path.GetTempPath(), files.Name)))
+                                if (String.IsNullOrEmpty(files.FilterPath))
                                 {
-                                    File.Delete(Path.Combine(Path.GetTempPath(), files.Name));
+                                    files.FilterPath = "/";
                                 }
-                                string absoluteFilePath = Path.GetTempPath() + files.Name;
-                                await CopyFileToTemp(absoluteFilePath, blockBlob);
-                                zipEntry = archive.CreateEntryFromFile(absoluteFilePath, files.Name, CompressionLevel.Fastest);
-                                if (File.Exists(Path.Combine(Path.GetTempPath(), files.Name)))
-                                {
-                                    File.Delete(Path.Combine(Path.GetTempPath(), files.Name));
-                                }
-                            }
-                            else
-                            {
+                                string relativeFilePath = filesPath + files.FilterPath;
                                 relativeFilePath = relativeFilePath.Replace(blobPath, "");
-                                pathValue = relativeFilePath == files.Name + files.FilterPath ? relativeFilePath : relativeFilePath + files.Name + "/";
-                                previousFolderName = relativeFilePath == files.Name + files.FilterPath ? "" : relativeFilePath;
-                                await DownloadFolder(relativeFilePath, files.Name, zipEntry, archive);
+                                currentFolderName = files.Name;
+                                if (files.IsFile)
+                                {
+                                    BlobClient blockBlob = container.GetBlobClient(relativeFilePath + files.Name);
+                                    if (File.Exists(Path.Combine(Path.GetTempPath(), files.Name)))
+                                    {
+                                        File.Delete(Path.Combine(Path.GetTempPath(), files.Name));
+                                    }
+                                    string absoluteFilePath = Path.GetTempPath() + files.Name;
+                                    await CopyFileToTemp(absoluteFilePath, blockBlob);
+                                    zipEntry = archive.CreateEntryFromFile(absoluteFilePath, files.Name, CompressionLevel.Fastest);
+                                    if (File.Exists(Path.Combine(Path.GetTempPath(), files.Name)))
+                                    {
+                                        File.Delete(Path.Combine(Path.GetTempPath(), files.Name));
+                                    }
+                                }
+                                else
+                                {
+                                    relativeFilePath = relativeFilePath.Replace(blobPath, "");
+                                    pathValue = relativeFilePath == files.Name + files.FilterPath ? relativeFilePath : relativeFilePath + files.Name + "/";
+                                    previousFolderName = relativeFilePath == files.Name + files.FilterPath ? "" : relativeFilePath;
+                                    await DownloadFolder(relativeFilePath, files.Name, zipEntry, archive);
+                                }
                             }
                         }
+                        archive.Dispose();
+                        FileStream fileStreamInput = new FileStream(tempPath, FileMode.Open, FileAccess.Read, FileShare.Delete);
+                        FileStreamResult fileStreamResult = new FileStreamResult(fileStreamInput, "APPLICATION/octet-stream");
+                        fileStreamResult.FileDownloadName = selectedItems.Length == 1 && selectedItems[0].Name != "" ? selectedItems[0].Name + ".zip" : "Files.zip";
+                        if (File.Exists(Path.Combine(Path.GetTempPath(), "temp.zip")))
+                        {
+                            File.Delete(Path.Combine(Path.GetTempPath(), "temp.zip"));
+                        }
+                        return fileStreamResult;
                     }
-                    archive.Dispose();
-                    FileStream fileStreamInput = new FileStream(tempPath, FileMode.Open, FileAccess.Read, FileShare.Delete);
-                    FileStreamResult fileStreamResult = new FileStreamResult(fileStreamInput, "APPLICATION/octet-stream");
-                    fileStreamResult.FileDownloadName = selectedItems.Length == 1 && selectedItems[0].Name != "" ? selectedItems[0].Name + ".zip" : "Files.zip";
-                    if (File.Exists(Path.Combine(Path.GetTempPath(), "temp.zip")))
-                    {
-                        File.Delete(Path.Combine(Path.GetTempPath(), "temp.zip"));
-                    }
-                    return fileStreamResult;
                 }
+            }
+            catch (Exception)
+            {
+                return null;
             }
             return null;
         }
@@ -677,6 +799,18 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 renamedFiles = renamedFiles ?? Array.Empty<string>();
                 foreach (FileManagerDirectoryContent item in data)
                 {
+                    AccessPermission permission = GetPathPermission(path, item.IsFile);
+                    if (permission != null && (!permission.Read || !permission.Copy))
+                    {
+                        accessMessage = permission.Message;
+                        throw new UnauthorizedAccessException("'" + this.getFileNameFromPath(path) + "' is not accessible. You need permission to perform the copy action.");
+                    }
+                    AccessPermission pathPermission = GetPermission(path, item.Name, item.IsFile);
+                    if (pathPermission != null && (!pathPermission.Read || !pathPermission.Copy))
+                    {
+                        accessMessage = permission.Message;
+                        throw new UnauthorizedAccessException("'" + path + item.Name + "' is not accessible. You need permission to perform the copy action.");
+                    }
                     if (item.IsFile)
                     {
                         if (await IsFileExists(targetPath + item.Name))
@@ -760,8 +894,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             catch (Exception e)
             {
                 ErrorDetails error = new ErrorDetails();
-                error.Code = "404";
                 error.Message = e.Message.ToString();
+                error.Code = error.Message.Contains("is not accessible. You need permission") ? "401" : "404";
+                if ((error.Code == "401") && !string.IsNullOrEmpty(accessMessage)) { error.Message = accessMessage; }
                 error.FileExists = copyResponse.Error?.FileExists;
                 copyResponse.Error = error;
                 return copyResponse;
@@ -822,6 +957,11 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Returns the image 
         public FileStreamResult GetImage(string path, string id, bool allowCompress, ImageSize size, params FileManagerDirectoryContent[] data)
         {
+            AccessPermission PathPermission = GetFilePermission("Files" + path);
+            if (PathPermission != null && !PathPermission.Read)
+            {
+                return null;
+            }
             return new FileStreamResult((new MemoryStream(new WebClient().DownloadData(filesPath + path))), "APPLICATION/octet-stream");
         }
 
@@ -867,6 +1007,18 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 renamedFiles = renamedFiles ?? Array.Empty<string>();
                 foreach (FileManagerDirectoryContent item in data)
                 {
+                    AccessPermission permission = GetPermission(path, item.Name, item.IsFile);
+                    if (permission != null && (!permission.Read || !permission.Write))
+                    {
+                        accessMessage = permission.Message;
+                        throw new UnauthorizedAccessException("'" + (path + item.Name) + "' is not accessible. You need permission to perform the write action.");
+                    }
+                    AccessPermission PathPermission = GetPathPermission(path, item.IsFile);
+                    if (PathPermission != null && (!PathPermission.Read || !PathPermission.WriteContents))
+                    {
+                        accessMessage = PathPermission.Message;
+                        throw new UnauthorizedAccessException("'" + this.getFileNameFromPath(path) + "' is not accessible. You need permission to perform the write action.");
+                    }
                     if (item.IsFile)
                     {
                         if (await IsFileExists(targetPath + item.Name))
@@ -949,8 +1101,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             catch (Exception e)
             {
                 ErrorDetails error = new ErrorDetails();
-                error.Code = "404";
                 error.Message = e.Message.ToString();
+                error.Code = error.Message.Contains("is not accessible. You need permission") ? "401" : "404";
+                if ((error.Code == "401") && !string.IsNullOrEmpty(accessMessage)) { error.Message = accessMessage; }
                 error.FileExists = moveResponse.Error?.FileExists;
                 moveResponse.Error = error;
                 return moveResponse;
@@ -993,6 +1146,146 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         protected virtual string WildcardToRegex(string pattern)
         {
             return "^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
+        }
+
+        protected virtual string[] GetFolderDetails(string path)
+        {
+            string[] str_array = path.Split('/'), fileDetails = new string[2];
+            string parentPath = "";
+            for (int i = 0; i < str_array.Length - 2; i++)
+            {
+                parentPath += str_array[i] + "/";
+            }
+            fileDetails[0] = parentPath;
+            fileDetails[1] = str_array[str_array.Length - 2];
+            return fileDetails;
+        }
+        protected virtual string GetPath(string path)
+        {
+            String fullPath = (this.blobPath + path);
+            return fullPath;
+        }
+        protected virtual bool HasPermission(Permission rule)
+        {
+            return rule == Permission.Allow ? true : false;
+        }
+        protected virtual AccessPermission UpdateFileRules(AccessPermission filePermission, AccessRule fileRule)
+        {
+            filePermission.Copy = HasPermission(fileRule.Copy);
+            filePermission.Download = HasPermission(fileRule.Download);
+            filePermission.Write = HasPermission(fileRule.Write);
+            filePermission.Read = HasPermission(fileRule.Read);
+            filePermission.Message = string.IsNullOrEmpty(fileRule.Message) ? string.Empty : fileRule.Message;
+            return filePermission;
+        }
+
+        protected virtual AccessPermission GetPermission(string location, string name, bool isFile)
+        {
+            AccessPermission FilePermission = new AccessPermission();
+            if (isFile)
+            {
+                if (this.AccessDetails.AccessRules == null) return null;
+                string nameExtension = Path.GetExtension(name).ToLower();
+                string fileName = Path.GetFileNameWithoutExtension(name);
+                string currentPath = GetPath(location);
+                //string currentPath = (location + name+"/");
+                foreach (AccessRule fileRule in AccessDetails.AccessRules)
+                {
+                    if (!string.IsNullOrEmpty(fileRule.Path) && fileRule.IsFile && (fileRule.Role == null || fileRule.Role == AccessDetails.Role))
+                    {
+                        if (fileRule.Path.IndexOf("*.*") > -1)
+                        {
+                            string parentPath = fileRule.Path.Substring(0, fileRule.Path.IndexOf("*.*"));
+                            if (currentPath.IndexOf(GetPath(parentPath)) == 0 || parentPath == "")
+                            {
+                                FilePermission = UpdateFileRules(FilePermission, fileRule);
+                            }
+                        }
+                        else if (fileRule.Path.IndexOf("*.") > -1)
+                        {
+                            string pathExtension = Path.GetExtension(fileRule.Path).ToLower();
+                            string parentPath = fileRule.Path.Substring(0, fileRule.Path.IndexOf("*."));
+                            if ((GetPath(parentPath) == currentPath || parentPath == "") && nameExtension == pathExtension)
+                            {
+                                FilePermission = UpdateFileRules(FilePermission, fileRule);
+                            }
+                        }
+                        else if (fileRule.Path.IndexOf(".*") > -1)
+                        {
+                            string pathName = Path.GetFileNameWithoutExtension(fileRule.Path);
+                            string parentPath = fileRule.Path.Substring(0, fileRule.Path.IndexOf(pathName + ".*"));
+                            if ((GetPath(parentPath) == currentPath || parentPath == "") && fileName == pathName)
+                            {
+                                FilePermission = UpdateFileRules(FilePermission, fileRule);
+                            }
+                        }
+                        else if (GetPath(fileRule.Path) == GetPath(location + name) || (GetPath(fileRule.Path) == GetPath(location + fileName)))
+                        {
+                            FilePermission = UpdateFileRules(FilePermission, fileRule);
+                        }
+                    }
+                }
+                return FilePermission;
+            }
+            else
+            {
+                if (this.AccessDetails.AccessRules == null) { return null; }
+                foreach (AccessRule folderRule in AccessDetails.AccessRules)
+                {
+                    if (folderRule.Path != null && folderRule.IsFile == false && (folderRule.Role == null || folderRule.Role == AccessDetails.Role))
+                    {
+                        if (folderRule.Path.IndexOf("*") > -1)
+                        {
+                            string parentPath = folderRule.Path.Substring(0, folderRule.Path.IndexOf("*"));
+                            if ((location + name).IndexOf(GetPath(parentPath)) == 0 || parentPath == "")
+                            {
+                                FilePermission = UpdateFolderRules(FilePermission, folderRule);
+                            }
+                        }
+                        else if (GetPath(folderRule.Path) == (location + name) || GetPath(folderRule.Path) == (location + name + Path.DirectorySeparatorChar) || GetPath(folderRule.Path) == (location + name + "/"))
+                        {
+                            FilePermission = UpdateFolderRules(FilePermission, folderRule);
+                        }
+                        else if ((location + name).IndexOf(GetPath(folderRule.Path)) == 0)
+                        {
+                            FilePermission = UpdateFolderRules(FilePermission, folderRule);
+                        }
+                    }
+                }
+                return FilePermission;
+            }
+        }
+        protected virtual AccessPermission UpdateFolderRules(AccessPermission folderPermission, AccessRule folderRule)
+        {
+            folderPermission.Copy = HasPermission(folderRule.Copy);
+            folderPermission.Download = HasPermission(folderRule.Download);
+            folderPermission.Write = HasPermission(folderRule.Write);
+            folderPermission.WriteContents = HasPermission(folderRule.WriteContents);
+            folderPermission.Read = HasPermission(folderRule.Read);
+            folderPermission.Upload = HasPermission(folderRule.Upload);
+            folderPermission.Message = string.IsNullOrEmpty(folderRule.Message) ? string.Empty : folderRule.Message;
+            return folderPermission;
+        }
+
+        protected virtual AccessPermission GetPathPermission(string path, bool isFile)
+        {
+            string[] fileDetails = GetFolderDetails(path);
+            if (isFile)
+            {
+                return GetPermission(GetPath(fileDetails[0]), fileDetails[1], true);
+            }
+            return GetPermission(GetPath(fileDetails[0]), fileDetails[1], false);
+        }
+        private string getFileNameFromPath(string path)
+        {
+            int index = path.LastIndexOf("/");
+            return path.Remove(index);
+        }
+        protected virtual AccessPermission GetFilePermission(string path)
+        {
+            string parentPath = path.Substring(0, path.LastIndexOf("/") + 1);
+            string fileName = Path.GetFileName(path);
+            return GetPermission(parentPath, fileName, true);
         }
     }
 }

@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Syncfusion.EJ2.FileManager.Base;
 using Syncfusion.EJ2.FileManager.AzureFileProvider;
+using System.Collections.Generic;
 
 namespace EJ2AzureASPCoreFileProvider.Controllers
 {
