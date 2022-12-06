@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
    <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFrameworks>netcoreapp3.1;net6.0;net7.0</TargetFrameworks>
 	<MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
     <RootNamespace>Syncfusion.EJ2.FileManager.AzureFileProvider</RootNamespace>
     <AssemblyName>Syncfusion.EJ2.FileManager.AzureFileProvider</AssemblyName>
@@ -24,7 +24,6 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.11.0-beta.1" />
-    <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.1.2" PrivateAssets="All" />
 	<PackageReference Include="Syncfusion.EJ2.AspNet.Core" Version="*" />
   </ItemGroup>
