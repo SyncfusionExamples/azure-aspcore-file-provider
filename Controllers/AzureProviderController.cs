@@ -19,7 +19,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         public AzureFileProvider operation;
         public string blobPath { get; set; }
         public string filePath { get; set; }
-        public AzureProviderController(IHostingEnvironment hostingEnvironment)
+        public AzureProviderController(IWebHostEnvironment hostingEnvironment)
         {
             this.operation = new AzureFileProvider();
             blobPath = "<--blobPath-->";
