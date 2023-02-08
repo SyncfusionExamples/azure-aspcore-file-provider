@@ -647,8 +647,10 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     {
                         string relativeFilePath = filesPath + selectedItems[0].FilterPath;
                         relativeFilePath = relativeFilePath.Replace(blobPath, "");
+                        // Initialize BlobClient object with the container, relative file path, and the name of the selected item in Azure Blob Storage.
                         BlobClient blockBlob = container.GetBlobClient(relativeFilePath + selectedItems[0].Name);
                         string absoluteFilePath = Path.GetTempPath() + selectedItems[0].Name;
+                        // Copy file from Azure Blob Storage to a temporary location using the CopyFileToTemp method.
                         await CopyFileToTemp(absoluteFilePath, blockBlob);
                         FileStream fileStreamInput = new FileStream(absoluteFilePath, FileMode.Open, FileAccess.Read, FileShare.Delete);
                         FileStreamResult fileStreamResult = new FileStreamResult(fileStreamInput, "APPLICATION/octet-stream");
