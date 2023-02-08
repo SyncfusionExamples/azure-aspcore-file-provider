@@ -645,8 +645,14 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     }
                     if (file.IsFile && selectedItems.Length == 1)
                     {
-                        FileStreamResult fileStreamResult = new FileStreamResult(new MemoryStream(new WebClient().DownloadData(filesPath + (names[0].Contains('/') ? '/' + names[0] : selectedItems[0].FilterPath + names[0]))), "APPLICATION/octet-stream");
-                        fileStreamResult.FileDownloadName = file.Name;
+                        string relativeFilePath = filesPath + selectedItems[0].FilterPath;
+                        relativeFilePath = relativeFilePath.Replace(blobPath, "");
+                        BlobClient blockBlob = container.GetBlobClient(relativeFilePath + selectedItems[0].Name);
+                        string absoluteFilePath = Path.GetTempPath() + selectedItems[0].Name;
+                        await CopyFileToTemp(absoluteFilePath, blockBlob);
+                        FileStream fileStreamInput = new FileStream(absoluteFilePath, FileMode.Open, FileAccess.Read, FileShare.Delete);
+                        FileStreamResult fileStreamResult = new FileStreamResult(fileStreamInput, "APPLICATION/octet-stream");
+                        fileStreamResult.FileDownloadName = selectedItems[0].Name;
                         return fileStreamResult;
                     }
                     else
