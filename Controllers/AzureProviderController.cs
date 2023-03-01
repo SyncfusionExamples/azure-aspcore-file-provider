@@ -24,6 +24,8 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
             this.operation = new AzureFileProvider();
             blobPath = "<--blobPath-->";
             filePath = "<--filePath-->";
+            blobPath = blobPath.Replace("../", "");
+            filePath = filePath.Replace("../", "");
             blobPath = (blobPath.Substring(blobPath.Length - 1) != "/") ? blobPath + "/" : blobPath.TrimEnd(new[] { '/', '\\' }) + "/";
             filePath = (filePath.Substring(filePath.Length - 1) == "/") ? filePath.TrimEnd(new[] { '/', '\\' }) : filePath;
             this.operation.SetBlobContainer(blobPath, filePath);            
