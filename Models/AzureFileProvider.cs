@@ -27,7 +27,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         string blobPath;
         string filesPath;
         long size;
-        string rootPath;
+        static string rootPath;
         string currentFolderName = "";
         string previousFolderName = "";
         string initialFolderName = "";
@@ -56,7 +56,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         public void SetRules(AccessDetails details)
         {
             this.AccessDetails = details;
-            DirectoryInfo root = new DirectoryInfo(this.rootPath);
+            DirectoryInfo root = new DirectoryInfo(rootPath);
             this.rootName = root.Name;
         }
         // Reads the storage 
@@ -771,7 +771,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             entry.IsFile = fileDetails.IsFile;
             entry.Size = fileDetails.Size;
             entry.HasChild = fileDetails.HasChild;
-            entry.FilterPath = targetPath;
+            entry.FilterPath = targetPath.Replace(rootPath, "");
             return entry;
         }
 
