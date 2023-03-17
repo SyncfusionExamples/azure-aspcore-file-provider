@@ -70,7 +70,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
                     return this.ToCamelCase(this.operation.Search(args.Path, args.SearchString, args.ShowHiddenItems, args.CaseSensitive, args.Data));
                 case "rename":
                     // Renames a file or folder.
-                    return this.ToCamelCase(this.operation.Rename(args.Path, args.Name, args.NewName, false, args.Data));
+                    return this.ToCamelCase(this.operation.Rename(args.Path, args.Name, args.NewName, false, args.ShowFileExtension, args.Data));
                 case "copy":
                     // Copies the selected file(s) or folder(s) from a path and then pastes them into a given target path.
                     return this.ToCamelCase(this.operation.Copy(args.Path, args.TargetPath, args.Names, args.RenameFiles, args.TargetData, args.Data));
