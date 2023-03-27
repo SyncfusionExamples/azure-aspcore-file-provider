@@ -358,19 +358,24 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Renames file(s) or folder(s)
-        public FileManagerResponse Rename(string path, string oldName, string newName, bool replace = false, params FileManagerDirectoryContent[] data)
+        public FileManagerResponse Rename(string path, string oldName, string newName, bool replace = false, bool showFileExtension = true, params FileManagerDirectoryContent[] data)
         {
-            return RenameAsync(path, oldName, newName, data).GetAwaiter().GetResult();
+            return RenameAsync(path, oldName, newName, showFileExtension, data).GetAwaiter().GetResult();
         }
 
         // Renames file(s) or folder(s)
-        protected async Task<FileManagerResponse> RenameAsync(string path, string oldName, string newName, params FileManagerDirectoryContent[] selectedItems)
+        protected async Task<FileManagerResponse> RenameAsync(string path, string oldName, string newName, bool showFileExtension, params FileManagerDirectoryContent[] selectedItems)
         {
             FileManagerResponse renameResponse = new FileManagerResponse();
             List<FileManagerDirectoryContent> details = new List<FileManagerDirectoryContent>();
             FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
             try
             {
+                if (!showFileExtension)
+                {
+                    oldName = oldName + selectedItems[0].Type;
+                    newName = newName + selectedItems[0].Type;
+                }
                 AccessPermission permission = GetPermission(GetPath(path), oldName, selectedItems[0].IsFile);
                 if (permission != null && (!permission.Read || !permission.Write))
                 {
