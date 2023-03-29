@@ -58,6 +58,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
                     return Json(this.ToCamelCase(this.operation.GetFiles(args.Path, args.ShowHiddenItems, args.Data)));
                 case "delete":
                     // Deletes the selected file(s) or folder(s) from the given path.
+                    this.operation.Response = Response;
                     return this.ToCamelCase(this.operation.Delete(args.Path, args.Names, args.Data));
                 case "details":
                     // Gets the details of the selected file(s) or folder(s).

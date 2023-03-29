@@ -31,6 +31,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         string currentFolderName = "";
         string previousFolderName = "";
         string initialFolderName = "";
+        internal HttpResponse Response;
         List<string> existFiles = new List<string>();
         List<string> missingFiles = new List<string>();
         bool isFolderAvailable = false;
@@ -455,6 +456,11 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
             try
             {
+                if (Response.HttpContext.Request.Host.Value == "ej2.syncfusion.com")
+                {
+                    throw new UnauthorizedAccessException("File Manager's delete functionality is restricted in the online demo. If you need to test delete functionality, please install Syncfusion Essential Studio on your machine and run the demo");
+                }
+              
                 foreach (FileManagerDirectoryContent item in selectedItems)
                 {
                     AccessPermission permission = GetPermission(path, item.Name, item.IsFile);
@@ -519,7 +525,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             {
                 ErrorDetails er = new ErrorDetails();
                 er.Message = e.Message.ToString();
-                er.Code = er.Message.Contains(" is not accessible.  You need permission") ? "401" : "417";
+                er.Code = er.Message.Contains(" is not accessible.  You need permission")||er.Message.Contains("Syncfusion Essential Studio") ? "401" : "417";
                 if ((er.Code == "401") && !string.IsNullOrEmpty(accessMessage)) { er.Message = accessMessage; }
                 removeResponse.Error = er;
                 return removeResponse;
