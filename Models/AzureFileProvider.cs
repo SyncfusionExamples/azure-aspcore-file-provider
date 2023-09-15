@@ -1001,7 +1001,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     FileManagerDirectoryContent itemDetail = new FileManagerDirectoryContent();
                     itemDetail.Name = item.Replace(subFolder.Path, "").Replace("/", "");
                     itemDetail.Path = subFolder.Path + "/" + itemDetail.Name;
-                    CopySubFolder(itemDetail, targetPath);
+                    MoveSubFolder(itemDetail, targetPath);
                 }
             }
         }
