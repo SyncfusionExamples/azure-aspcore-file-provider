@@ -412,7 +412,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         {
                             foreach (BlobItem item in page.Values)
                             {
-								string name = Uri.UnescapeDataString(container.GetBlobClient(item.Name).Uri.AbsolutePath.Replace(container.GetBlobClient(path + oldName).Uri.AbsolutePath + "/", "").Replace("%20", " "));
+                                string name = Uri.UnescapeDataString(container.GetBlobClient(item.Name).Uri.AbsolutePath.Replace(container.GetBlobClient(path + oldName).Uri.AbsolutePath + "/", "").Replace("%20", " "));
                                 await (container.GetBlobClient(path + newName + "/" + name)).StartCopyFromUriAsync(container.GetBlobClient(item.Name).Uri);
                                 await container.GetBlobClient(path + oldName + "/" + name).DeleteAsync();
                             }
