@@ -48,7 +48,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
                 //string startPath = "https://azure_service_account.blob.core.windows.net/files/";
                 //string originalPath = ("https://azure_service_account.blob.core.windows.net/files/Files").Replace(startPath, "");
                 //-------------------
-                args.Path = (originalPath + args.Path).Replace("//", "/");
+                args.Path = !args.Path.Contains(originalPath) ? (originalPath + args.Path).Replace("//", "/") : (args.Path).Replace("//", "/");
                 args.TargetPath = (originalPath + args.TargetPath).Replace("//", "/");
             }
             switch (args.Action)
