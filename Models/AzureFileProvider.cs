@@ -85,7 +85,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     return readResponse;
                 }
                 string[] extensions = ((filter.Replace(" ", "")) ?? "*").Split(",|;".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
-                cwd.Name = selectedItems.Length > 0 ? selectedItems[0].Name : rootPath;
+                cwd.Name = selectedItems.Length > 0 ? selectedItems[0].Name : path.TrimEnd('/');
                 var sampleDirectory = container.GetBlobClient(path);
                 cwd.Type = "File Folder";
                 cwd.FilterPath = selectedItems.Length > 0 ? selectedItems[0].FilterPath : "";
