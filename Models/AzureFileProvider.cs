@@ -352,7 +352,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 else
                 {
                     BlobClient blob = container.GetBlobClient(path + name + "/About.txt");
-                    await blob.UploadAsync(new MemoryStream(Encoding.UTF8.GetBytes("This is a auto generated file")), new BlobHttpHeaders() { ContentType = "text/plain" });
+                    await blob.UploadAsync(new MemoryStream(Encoding.UTF8.GetBytes("This is an auto generated file")), new BlobHttpHeaders() { ContentType = "text/plain" });
                 }
             }
         }
