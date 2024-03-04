@@ -389,7 +389,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     entry.IsFile = isFile;
                     entry.Size = directoryContent.Size;
                     entry.HasChild = directoryContent.HasChild;
-                    entry.FilterPath = path;
+                    entry.FilterPath = directoryContent.FilterPath;
                     details.Add(entry);
                     break;
                 }
