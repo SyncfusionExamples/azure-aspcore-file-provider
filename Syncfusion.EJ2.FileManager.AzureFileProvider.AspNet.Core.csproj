@@ -2,15 +2,15 @@
    <PropertyGroup>
     <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
 	<MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
-    <RootNamespace>Syncfusion.EJ2.FileManager.AzureFileProvider</RootNamespace>
-    <AssemblyName>Syncfusion.EJ2.FileManager.AzureFileProvider</AssemblyName>
-    <AssemblyVersion>17.4.0.43</AssemblyVersion>
-    <FileVersion>17.4.0.43</FileVersion>
-    <Version>17.4.0.43</Version>
+    <RootNamespace>EQ.Syncfusion.EJ2.FileManager.AzureFileProvider</RootNamespace>
+    <AssemblyName>EQ.Syncfusion.EJ2.FileManager.AzureFileProvider</AssemblyName>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.0.0.0</Version>
     <Product>Syncfusion file manager Azure file provider for Essential JS 2</Product>    
     <Company>Syncfusion Inc.</Company>
-    <PackageId>Syncfusion.EJ2.FileManager.AzureFileProvider</PackageId>
-    <PackageTags>Syncfusion;EJ2;AzureFileProvider</PackageTags>
+    <PackageId>EQ.Syncfusion.EJ2.FileManager.AzureFileProvider</PackageId>
+    <PackageTags>EQ.Syncfusion;EJ2;AzureFileProvider</PackageTags>
     <PackageIconUrl>http://www.syncfusion.com/content/images/nuget/sync_logo_icon.png</PackageIconUrl>
     <PackageProjectUrl>http://www.syncfusion.com</PackageProjectUrl>
     <PackageLicenseUrl>http://www.syncfusion.com/nuget/license</PackageLicenseUrl>
