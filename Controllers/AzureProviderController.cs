@@ -36,7 +36,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
             //this.operation.RegisterAzure("azure_service_account", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "files");
             //---------
         }
-        [Route("AzureFileOperations")]
+        [HttpPost("AzureFileOperations")]
         public object AzureFileOperations([FromBody] FileManagerDirectoryContent args)
         {
             if (args.Path != "")
@@ -92,7 +92,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         }
 
         // Uploads the file(s) into a specified path
-        [Route("AzureUpload")]
+        [HttpPost("AzureUpload")]
         public ActionResult AzureUpload(FileManagerDirectoryContent args)
         {
             if (args.Path != "")
@@ -119,7 +119,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         }
 
         // Downloads the selected file(s) and folder(s)
-        [Route("AzureDownload")]
+        [HttpPost("AzureDownload")]
         public object AzureDownload(string downloadInput)
         {
             FileManagerDirectoryContent args = JsonConvert.DeserializeObject<FileManagerDirectoryContent>(downloadInput);
@@ -127,7 +127,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         }
 
         // Gets the image(s) from the given path
-        [Route("AzureGetImage")]
+        [HttpGet("AzureGetImage")]
         public IActionResult AzureGetImage(FileManagerDirectoryContent args)
         {
             return this.operation.GetImage(args.Path, args.Id, true, null, args.Data);

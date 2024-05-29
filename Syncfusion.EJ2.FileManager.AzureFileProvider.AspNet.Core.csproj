@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
    <PropertyGroup>
-    <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+    <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
 	<MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
     <RootNamespace>Syncfusion.EJ2.FileManager.AzureFileProvider</RootNamespace>
     <AssemblyName>Syncfusion.EJ2.FileManager.AzureFileProvider</AssemblyName>
-    <AssemblyVersion>17.4.0.43</AssemblyVersion>
-    <FileVersion>17.4.0.43</FileVersion>
-    <Version>17.4.0.43</Version>
+    <AssemblyVersion>25.2.3</AssemblyVersion>
+    <FileVersion>25.2.3</FileVersion>
+    <Version>25.2.3</Version>
     <Product>Syncfusion file manager Azure file provider for Essential JS 2</Product>    
     <Company>Syncfusion Inc.</Company>
     <PackageId>Syncfusion.EJ2.FileManager.AzureFileProvider</PackageId>
@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.14.1" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.20.0" />
 	<PackageReference Include="Syncfusion.EJ2.AspNet.Core" Version="*" />
   </ItemGroup>
 
