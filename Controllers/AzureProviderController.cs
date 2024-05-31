@@ -55,7 +55,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
             {
                 case "read":
                     // Reads the file(s) or folder(s) from the given path.
-                    return Json(this.ToCamelCase(this.operation.GetFiles(args.Path, args.ShowHiddenItems, args.Data)));
+                    return this.ToCamelCase(this.operation.GetFiles(args.Path, args.ShowHiddenItems, args.Data));
                 case "delete":
                     // Deletes the selected file(s) or folder(s) from the given path.
                     return this.ToCamelCase(this.operation.Delete(args.Path, args.Names, args.Data));
