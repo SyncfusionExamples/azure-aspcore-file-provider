@@ -802,11 +802,17 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         private async Task<FileManagerResponse> CopyToAsync(string path, string targetPath, string[] names, string[] renamedFiles = null, params FileManagerDirectoryContent[] data)
         {
             FileManagerResponse copyResponse = new FileManagerResponse();
+            HashSet<string> processedItems = new HashSet<string>();
             try
             {
                 renamedFiles = renamedFiles ?? Array.Empty<string>();
                 foreach (FileManagerDirectoryContent item in data)
                 {
+                    if (processedItems.Contains(item.Name))
+                    {
+                        continue;
+                    }
+                    processedItems.Add(item.Name);
                     AccessPermission permission = GetPathPermission(path, item.IsFile);
                     if (permission != null && (!permission.Read || !permission.Copy))
                     {
@@ -828,7 +834,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             {
                                 index = Array.FindIndex(renamedFiles, Items => Items.Contains(item.Name));
                             }
-                            if ((path == targetPath) || (index != -1))
+                            if ((index != -1))
                             {
                                 string newName = await FileRename(targetPath, item.Name);
                                 CopyItems(rootPath + item.FilterPath, targetPath, item.Name, newName);
