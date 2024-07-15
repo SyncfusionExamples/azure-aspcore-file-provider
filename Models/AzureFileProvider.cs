@@ -371,11 +371,6 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
             try
             {
-                if (!showFileExtension)
-                {
-                    oldName = oldName + selectedItems[0].Type;
-                    newName = newName + selectedItems[0].Type;
-                }
                 AccessPermission permission = GetPermission(GetPath(path), oldName, selectedItems[0].IsFile);
                 if (permission != null && (!permission.Read || !permission.Write))
                 {
@@ -402,6 +397,11 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 {
                     if (isFile)
                     {
+                        if (!showFileExtension)
+                        {
+                            oldName = oldName + selectedItems[0].Type;
+                            newName = newName + selectedItems[0].Type;
+                        }
                         BlobClient existBlob = container.GetBlobClient(path + oldName);
                         await (container.GetBlobClient(path + newName)).StartCopyFromUriAsync(existBlob.Uri);
                         await existBlob.DeleteAsync();
