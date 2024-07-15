@@ -371,7 +371,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
             try
             {
-				if (!showFileExtension)
+                if (!showFileExtension)
                 {
                     oldName = oldName + selectedItems[0].Type;
                     newName = newName + selectedItems[0].Type;
