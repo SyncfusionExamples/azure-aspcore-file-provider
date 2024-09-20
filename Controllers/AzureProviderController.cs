@@ -4,11 +4,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using Syncfusion.EJ2.FileManager.Base;
 using Syncfusion.EJ2.FileManager.AzureFileProvider;
 using System.Collections.Generic;
+using System.Text.Json;
 
 namespace EJ2AzureASPCoreFileProvider.Controllers
 {
@@ -82,13 +81,12 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         }
         public string ToCamelCase(object userData)
         {
-            return JsonConvert.SerializeObject(userData, new JsonSerializerSettings
+            JsonSerializerOptions options = new JsonSerializerOptions
             {
-                ContractResolver = new DefaultContractResolver
-                {
-                    NamingStrategy = new CamelCaseNamingStrategy()
-                }
-            });
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            return JsonSerializer.Serialize(userData, options);
         }
 
         // Uploads the file(s) into a specified path
@@ -122,7 +120,11 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         [HttpPost("AzureDownload")]
         public object AzureDownload(string downloadInput)
         {
-            FileManagerDirectoryContent args = JsonConvert.DeserializeObject<FileManagerDirectoryContent>(downloadInput);
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+            FileManagerDirectoryContent args = JsonSerializer.Deserialize<FileManagerDirectoryContent>(downloadInput, options);
             return operation.Download(args.Path, args.Names, args.Data);
         }
 
