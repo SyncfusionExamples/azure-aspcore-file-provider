@@ -13,6 +13,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Syncfusion.EJ2.FileManager.Base;
 using System.Text;
+using Azure.Storage.Blobs.Specialized;
 
 namespace Syncfusion.EJ2.FileManager.AzureFileProvider
 {
@@ -37,6 +38,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         List<FileManagerDirectoryContent> copiedFiles = new List<FileManagerDirectoryContent>();
         DateTime lastUpdated = DateTime.MinValue;
         DateTime prevUpdated = DateTime.MinValue;
+        public HttpContext HttpContext;
 
         // Registering the azure storage 
         public void RegisterAzure(string accountName, string accountKey, string blobName)
@@ -550,6 +552,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 {
                     if (files != null)
                     {
+                        BlockBlobClient blockBlobClient = container.GetBlockBlobClient(path.Replace(blobPath, "") + file.FileName);
                         BlobClient blockBlob = container.GetBlobClient(path.Replace(blobPath, "") + file.FileName);
                         string fileName = file.FileName;
                         string absoluteFilePath = Path.Combine(path, fileName);
@@ -557,7 +560,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         {
                             if (!await IsFileExists(absoluteFilePath))
                             {
-                                await blockBlob.UploadAsync(file.OpenReadStream());
+                                await PerformUpload(file, blockBlobClient, blockBlob);
                             }
                             else
                             {
@@ -570,7 +573,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             {
                                 await blockBlob.DeleteAsync();
                             }
-                            await blockBlob.UploadAsync(file.OpenReadStream());
+                            await PerformUpload(file, blockBlobClient, blockBlob);
                         }
                         else if (action == "keepboth")
                         {
@@ -590,7 +593,8 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             }
                             newAbsoluteFilePath = newFileName + (fileCount > 0 ? "(" + fileCount.ToString() + ")" : "") + Path.GetExtension(fileName);
                             BlobClient newBlob = container.GetBlobClient(path.Replace(blobPath, "") + newAbsoluteFilePath);
-                            await newBlob.UploadAsync(file.OpenReadStream());
+                            BlockBlobClient newBlockBlobClient = container.GetBlockBlobClient(path.Replace(blobPath, "") + file.FileName);
+                            await PerformUpload(file, newBlockBlobClient, newBlob);
                         }
                     }
                 }
@@ -614,6 +618,34 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 return uploadResponse;
             }
             return uploadResponse;
+        }
+
+        private async Task PerformUpload(IFormFile file, BlockBlobClient blockBlobClient, BlobClient blockBlob)
+        {
+            if (file.ContentType == "application/octet-stream")
+            {
+                var chunkIndex = Convert.ToInt32(HttpContext.Request.Form["chunk-index"]);
+                var totalChunk = Convert.ToInt32(HttpContext.Request.Form["total-chunk"]);
+
+                using (var fileStream = file.OpenReadStream())
+                {
+                    var blockId = Convert.ToBase64String(Encoding.UTF8.GetBytes(chunkIndex.ToString("d6")));
+
+                    await blockBlobClient.StageBlockAsync(blockId, fileStream);
+
+                    if (chunkIndex == totalChunk - 1)
+                    {
+                        var blockList = Enumerable.Range(0, totalChunk)
+                            .Select(i => Convert.ToBase64String(Encoding.UTF8.GetBytes(i.ToString("d6")))).ToList();
+
+                        await blockBlobClient.CommitBlockListAsync(blockList);
+                    }
+                }
+            }
+            else
+            {
+                await blockBlob.UploadAsync(file.OpenReadStream());
+            }
         }
 
         protected async Task CopyFileToTemp(string path, BlobClient blockBlob)
