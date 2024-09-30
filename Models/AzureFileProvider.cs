@@ -624,22 +624,28 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         {
             if (file.ContentType == "application/octet-stream")
             {
-                var chunkIndex = Convert.ToInt32(HttpContext.Request.Form["chunk-index"]);
-                var totalChunk = Convert.ToInt32(HttpContext.Request.Form["total-chunk"]);
-
-                using (var fileStream = file.OpenReadStream())
+                if (HttpContext?.Request?.Form != null)
                 {
-                    var blockId = Convert.ToBase64String(Encoding.UTF8.GetBytes(chunkIndex.ToString("d6")));
-
-                    await blockBlobClient.StageBlockAsync(blockId, fileStream);
-
-                    if (chunkIndex == totalChunk - 1)
+                    var chunkIndex = Convert.ToInt32(HttpContext.Request.Form["chunk-index"]);
+                    var totalChunk = Convert.ToInt32(HttpContext.Request.Form["total-chunk"]);
+                    using (var fileStream = file.OpenReadStream())
                     {
-                        var blockList = Enumerable.Range(0, totalChunk)
-                            .Select(i => Convert.ToBase64String(Encoding.UTF8.GetBytes(i.ToString("d6")))).ToList();
+                        var blockId = Convert.ToBase64String(Encoding.UTF8.GetBytes(chunkIndex.ToString("d6")));
 
-                        await blockBlobClient.CommitBlockListAsync(blockList);
+                        await blockBlobClient.StageBlockAsync(blockId, fileStream);
+
+                        if (chunkIndex == totalChunk - 1)
+                        {
+                            var blockList = Enumerable.Range(0, totalChunk)
+                                .Select(i => Convert.ToBase64String(Encoding.UTF8.GetBytes(i.ToString("d6")))).ToList();
+
+                            await blockBlobClient.CommitBlockListAsync(blockList);
+                        }
                     }
+                }
+                else
+                {
+                    throw new InvalidOperationException("HttpContext or Request Form data is not available.");
                 }
             }
             else
