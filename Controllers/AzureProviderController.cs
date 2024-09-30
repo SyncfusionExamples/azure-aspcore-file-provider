@@ -105,6 +105,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
                 //args.Path = (originalPath + args.Path).Replace("//", "/");
                 //----------------------
             }
+	    operation.HttpContext = HttpContext;
             FileManagerResponse uploadResponse = operation.Upload(args.Path, args.UploadFiles, args.Action, args.Data);
             if (uploadResponse.Error != null)
             {
