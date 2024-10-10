@@ -14,6 +14,7 @@ using Azure.Storage.Blobs.Models;
 using Syncfusion.EJ2.FileManager.Base;
 using System.Text;
 using Azure.Storage.Blobs.Specialized;
+using System.Text.Json;
 
 namespace Syncfusion.EJ2.FileManager.AzureFileProvider
 {
@@ -1343,6 +1344,16 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             string parentPath = path.Substring(0, path.LastIndexOf("/") + 1);
             string fileName = Path.GetFileName(path);
             return GetPermission(parentPath, fileName, true);
+        }
+
+        public string ToCamelCase(object userData)
+        {
+            JsonSerializerOptions options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            return JsonSerializer.Serialize(userData, options);
         }
     }
 }
