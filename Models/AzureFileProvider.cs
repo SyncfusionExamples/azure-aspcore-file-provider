@@ -594,7 +594,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             }
                             newAbsoluteFilePath = newFileName + (fileCount > 0 ? "(" + fileCount.ToString() + ")" : "") + Path.GetExtension(fileName);
                             BlobClient newBlob = container.GetBlobClient(path.Replace(blobPath, "") + newAbsoluteFilePath);
-                            BlockBlobClient newBlockBlobClient = container.GetBlockBlobClient(path.Replace(blobPath, "") + file.FileName);
+                            BlockBlobClient newBlockBlobClient = container.GetBlockBlobClient(path.Replace(blobPath, "") + newAbsoluteFilePath);
                             await PerformUpload(file, newBlockBlobClient, newBlob);
                         }
                     }
