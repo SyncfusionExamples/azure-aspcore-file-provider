@@ -18,7 +18,7 @@ using System.Text.Json;
 
 namespace Syncfusion.EJ2.FileManager.AzureFileProvider
 {
-    public class AzureFileProvider : IAzureFileProviderBase
+    public class AzureFileProvider
     {
         List<FileManagerDirectoryContent> directoryContentItems = new List<FileManagerDirectoryContent>();
         BlobContainerClient container;
@@ -39,7 +39,6 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         List<FileManagerDirectoryContent> copiedFiles = new List<FileManagerDirectoryContent>();
         DateTime lastUpdated = DateTime.MinValue;
         DateTime prevUpdated = DateTime.MinValue;
-        public HttpContext HttpContext;
 
         // Registering the azure storage 
         public void RegisterAzure(string accountName, string accountKey, string blobName)
@@ -532,13 +531,13 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Upload file(s) to the storage
-        public FileManagerResponse Upload(string path, IList<IFormFile> files, string action, params FileManagerDirectoryContent[] data)
+        public FileManagerResponse Upload(string path, IList<IFormFile> files, string action, int chunkIndex, int totalChunk, params FileManagerDirectoryContent[] data)
         {
-            return UploadAsync(files, action, path, data).GetAwaiter().GetResult();
+            return UploadAsync(files, action, path, chunkIndex, totalChunk, data).GetAwaiter().GetResult();
         }
 
         // Upload file(s) to the storage
-        protected async Task<FileManagerResponse> UploadAsync(IEnumerable<IFormFile> files, string action, string path, IEnumerable<object> selectedItems = null)
+        protected async Task<FileManagerResponse> UploadAsync(IEnumerable<IFormFile> files, string action, string path, int chunkIndex, int totalChunk, IEnumerable<object> selectedItems = null)
         {
             FileManagerResponse uploadResponse = new FileManagerResponse();
             try
@@ -561,7 +560,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         {
                             if (!await IsFileExists(absoluteFilePath))
                             {
-                                await PerformUpload(file, blockBlobClient, blockBlob);
+                                await PerformUpload(file, blockBlobClient, blockBlob, chunkIndex, totalChunk);
                             }
                             else
                             {
@@ -574,7 +573,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             {
                                 await blockBlob.DeleteAsync();
                             }
-                            await PerformUpload(file, blockBlobClient, blockBlob);
+                            await PerformUpload(file, blockBlobClient, blockBlob, chunkIndex, totalChunk);
                         }
                         else if (action == "keepboth")
                         {
@@ -594,8 +593,8 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             }
                             newAbsoluteFilePath = newFileName + (fileCount > 0 ? "(" + fileCount.ToString() + ")" : "") + Path.GetExtension(fileName);
                             BlobClient newBlob = container.GetBlobClient(path.Replace(blobPath, "") + newAbsoluteFilePath);
-                            BlockBlobClient newBlockBlobClient = container.GetBlockBlobClient(path.Replace(blobPath, "") + file.FileName);
-                            await PerformUpload(file, newBlockBlobClient, newBlob);
+                            BlockBlobClient newBlockBlobClient = container.GetBlockBlobClient(path.Replace(blobPath, "") + newAbsoluteFilePath);
+                            await PerformUpload(file, newBlockBlobClient, newBlob, chunkIndex, totalChunk);
                         }
                     }
                 }
@@ -621,32 +620,23 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             return uploadResponse;
         }
 
-        private async Task PerformUpload(IFormFile file, BlockBlobClient blockBlobClient, BlobClient blockBlob)
+        private async Task PerformUpload(IFormFile file, BlockBlobClient blockBlobClient, BlobClient blockBlob, int chunkIndex, int totalChunk)
         {
             if (file.ContentType == "application/octet-stream")
             {
-                if (HttpContext?.Request?.Form != null)
+                using (var fileStream = file.OpenReadStream())
                 {
-                    var chunkIndex = Convert.ToInt32(HttpContext.Request.Form["chunk-index"]);
-                    var totalChunk = Convert.ToInt32(HttpContext.Request.Form["total-chunk"]);
-                    using (var fileStream = file.OpenReadStream())
+                    var blockId = Convert.ToBase64String(Encoding.UTF8.GetBytes(chunkIndex.ToString("d6")));
+
+                    await blockBlobClient.StageBlockAsync(blockId, fileStream);
+
+                    if (chunkIndex == totalChunk - 1)
                     {
-                        var blockId = Convert.ToBase64String(Encoding.UTF8.GetBytes(chunkIndex.ToString("d6")));
+                        var blockList = Enumerable.Range(0, totalChunk)
+                            .Select(i => Convert.ToBase64String(Encoding.UTF8.GetBytes(i.ToString("d6")))).ToList();
 
-                        await blockBlobClient.StageBlockAsync(blockId, fileStream);
-
-                        if (chunkIndex == totalChunk - 1)
-                        {
-                            var blockList = Enumerable.Range(0, totalChunk)
-                                .Select(i => Convert.ToBase64String(Encoding.UTF8.GetBytes(i.ToString("d6")))).ToList();
-
-                            await blockBlobClient.CommitBlockListAsync(blockList);
-                        }
+                        await blockBlobClient.CommitBlockListAsync(blockList);
                     }
-                }
-                else
-                {
-                    throw new InvalidOperationException("HttpContext or Request Form data is not available.");
                 }
             }
             else
