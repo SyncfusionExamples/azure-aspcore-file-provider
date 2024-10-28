@@ -79,13 +79,6 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 var blobPages = container.GetBlobsAsync(prefix: path).AsPages().GetAsyncEnumerator();
                 await blobPages.MoveNextAsync();
                 bool directoryExists = blobPages.Current.Values.Count() > 0;
-                if (!directoryExists) {
-                    ErrorDetails er = new ErrorDetails();
-                    er.Message = "Could not find a part of the path " + "'" + path + "'" + ".";
-                    er.Code = "417";
-                    readResponse.Error = er;
-                    return readResponse;
-                }
                 string[] extensions = ((filter.Replace(" ", "")) ?? "*").Split(",|;".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
                 cwd.Name = selectedItems.Length > 0 ? selectedItems[0].Name : path.TrimEnd('/');
                 var sampleDirectory = container.GetBlobClient(path);
@@ -93,51 +86,54 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 cwd.FilterPath = selectedItems.Length > 0 ? selectedItems[0].FilterPath : "";
                 cwd.Size = 0;
                 cwd.Permission = GetPathPermission(path, false);
-                foreach (Azure.Page<BlobHierarchyItem> page in container.GetBlobsByHierarchy(prefix: path, delimiter: "/").AsPages())
+                if (directoryExists)
                 {
-                    foreach (BlobItem item in page.Values.Where(item => item.IsBlob).Select(item => item.Blob))
+                    foreach (Azure.Page<BlobHierarchyItem> page in container.GetBlobsByHierarchy(prefix: path, delimiter: "/").AsPages())
                     {
-                        bool includeItem = true;
-                        if (!(extensions[0].Equals("*.*") || extensions[0].Equals("*")))
+                        foreach (BlobItem item in page.Values.Where(item => item.IsBlob).Select(item => item.Blob))
                         {
-                            if (!(Array.IndexOf(extensions, "*." + (item.Name.ToString().Trim().Split('.'))[item.Name.ToString().Trim().Split('.').Length - 1]) >= 0))
-                                includeItem = false;
+                            bool includeItem = true;
+                            if (!(extensions[0].Equals("*.*") || extensions[0].Equals("*")))
+                            {
+                                if (!(Array.IndexOf(extensions, "*." + (item.Name.ToString().Trim().Split('.'))[item.Name.ToString().Trim().Split('.').Length - 1]) >= 0))
+                                    includeItem = false;
+                            }
+                            if (includeItem)
+                            {
+                                FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
+                                entry.Name = item.Name.Replace(path, "");
+                                entry.Type = System.IO.Path.GetExtension(item.Name.Replace(path, ""));
+                                entry.IsFile = true;
+                                entry.Size = item.Properties.ContentLength.Value;
+                                entry.DateModified = item.Properties.LastModified.Value.LocalDateTime;
+                                entry.HasChild = false;
+                                entry.FilterPath = selectedItems.Length > 0 ? path.Replace(rootPath, "") : "/";
+                                entry.Permission = GetPermission(item.Name.Replace(entry.Name, ""), entry.Name, true);
+                                details.Add(entry);
+                            }
                         }
-                        if (includeItem)
+                        foreach (string item in page.Values.Where(item => item.IsPrefix).Select(item => item.Prefix))
                         {
-                            FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
-                            entry.Name = item.Name.Replace(path, "");
-                            entry.Type = System.IO.Path.GetExtension(item.Name.Replace(path, ""));
-                            entry.IsFile = true;
-                            entry.Size = item.Properties.ContentLength.Value;
-                            entry.DateModified = item.Properties.LastModified.Value.LocalDateTime;
-                            entry.HasChild = false;
-                            entry.FilterPath = selectedItems.Length > 0 ? path.Replace(rootPath, "") : "/";
-                            entry.Permission = GetPermission(item.Name.Replace(entry.Name, ""), entry.Name, true);
-                            details.Add(entry);
-                        }
-                    }
-                    foreach (string item in page.Values.Where(item => item.IsPrefix).Select(item => item.Prefix))
-                    {
-                        bool includeItem = true;
+                            bool includeItem = true;
 
-                        if (includeItem)
-                        {
-                            FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
-                            string directory = item;
-                            entry.Name = directory.Replace(path, "").Replace("/", "");
-                            entry.Type = "Directory";
-                            entry.IsFile = false;
-                            entry.Size = 0;
-                            entry.HasChild = await HasChildDirectory(directory);
-                            entry.FilterPath = selectedItems.Length > 0 ? path.Replace(rootPath, "") : "/";
-                            entry.DateModified = await DirectoryLastModified(directory);
-                            entry.Permission = GetPathPermission(directory, false);
-                            lastUpdated = prevUpdated = DateTime.MinValue;
-                            details.Add(entry);
+                            if (includeItem)
+                            {
+                                FileManagerDirectoryContent entry = new FileManagerDirectoryContent();
+                                string directory = item;
+                                entry.Name = directory.Replace(path, "").Replace("/", "");
+                                entry.Type = "Directory";
+                                entry.IsFile = false;
+                                entry.Size = 0;
+                                entry.HasChild = await HasChildDirectory(directory);
+                                entry.FilterPath = selectedItems.Length > 0 ? path.Replace(rootPath, "") : "/";
+                                entry.DateModified = await DirectoryLastModified(directory);
+                                entry.Permission = GetPathPermission(directory, false);
+                                lastUpdated = prevUpdated = DateTime.MinValue;
+                                details.Add(entry);
+                            }
                         }
+                        prefixes = page.Values.Where(item => item.IsPrefix).Select(item => item.Prefix).ToList();
                     }
-                    prefixes = page.Values.Where(item => item.IsPrefix).Select(item => item.Prefix).ToList();
                 }
                 cwd.HasChild = prefixes?.Count != 0;
                 readResponse.CWD = cwd;
@@ -173,8 +169,12 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         {
             foreach (Azure.Page<BlobItem> page in container.GetBlobs(prefix: path).AsPages())
             {
-                DateTime checkFileModified = (page.Values.ToList().OrderByDescending(m => m.Properties.LastModified).ToList().First()).Properties.LastModified.Value.LocalDateTime;
-                lastUpdated = prevUpdated = prevUpdated < checkFileModified ? checkFileModified : prevUpdated;
+                BlobItem item = page.Values.ToList().OrderByDescending(m => m.Properties.LastModified).FirstOrDefault();
+                if (item != null && item.Properties != null && item.Properties.LastModified != null)
+                {
+                    DateTime checkFileModified = item.Properties.LastModified.Value.LocalDateTime;
+                    lastUpdated = prevUpdated = prevUpdated < checkFileModified ? checkFileModified : prevUpdated;
+                }
             }
             return lastUpdated;
         }
