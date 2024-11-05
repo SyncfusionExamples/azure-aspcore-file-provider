@@ -43,8 +43,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Registering the azure storage 
         public void RegisterAzure(string accountName, string accountKey, string blobName)
         {
-            container = new BlobServiceClient(new Uri(blobPath.Substring(0, blobPath.Length - blobName.Length - 1)), new StorageSharedKeyCredential(accountName, accountKey), null).GetBlobContainerClient(blobName);
-            
+            container = new BlobServiceClient(new Uri(blobPath.Substring(0, blobPath.Length - blobName.Length - 1)), new StorageSharedKeyCredential(accountName, accountKey), null).GetBlobContainerClient(blobName);            
         }
 
         // Sets blob and file path
@@ -531,7 +530,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Upload file(s) to the storage
-        public FileManagerResponse Upload(string path, IList<IFormFile> files, string action, int chunkIndex, int totalChunk, params FileManagerDirectoryContent[] data)
+        public FileManagerResponse Upload(string path, IList<IFormFile> files, string action, int chunkIndex = 0, int totalChunk = 0, params FileManagerDirectoryContent[] data)
         {
             return UploadAsync(files, action, path, chunkIndex, totalChunk, data).GetAwaiter().GetResult();
         }
