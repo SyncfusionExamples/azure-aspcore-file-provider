@@ -96,8 +96,8 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
                 //args.Path = (originalPath + args.Path).Replace("//", "/");
                 //----------------------
             }
-            int chunkIndex = Convert.ToInt32(HttpContext.Request.Form["chunk-index"]);
-            int totalChunk = Convert.ToInt32(HttpContext.Request.Form["total-chunk"]);
+            int chunkIndex = int.TryParse(HttpContext.Request.Form["chunk-index"], out int parsedChunkIndex) ? parsedChunkIndex : 0;
+            int totalChunk = int.TryParse(HttpContext.Request.Form["total-chunk"], out int parsedTotalChunk) ? parsedTotalChunk : 0;
             FileManagerResponse uploadResponse = operation.Upload(args.Path, args.UploadFiles, args.Action, chunkIndex, totalChunk, args.Data);
             if (uploadResponse.Error != null)
             {
