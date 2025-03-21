@@ -15,6 +15,7 @@ using Syncfusion.EJ2.FileManager.Base;
 using System.Text;
 using Azure.Storage.Blobs.Specialized;
 using System.Text.Json;
+using System.Net.Http;
 
 namespace Syncfusion.EJ2.FileManager.AzureFileProvider
 {
@@ -32,7 +33,6 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         static string rootPath;
         string currentFolderName = "";
         string previousFolderName = "";
-        string initialFolderName = "";
         List<string> existFiles = new List<string>();
         List<string> missingFiles = new List<string>();
         bool isFolderAvailable = false;
@@ -43,7 +43,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Registering the azure storage 
         public void RegisterAzure(string accountName, string accountKey, string blobName)
         {
-            container = new BlobServiceClient(new Uri(blobPath.Substring(0, blobPath.Length - blobName.Length - 1)), new StorageSharedKeyCredential(accountName, accountKey), null).GetBlobContainerClient(blobName);            
+            container = new BlobServiceClient(new Uri(blobPath.Substring(0, blobPath.Length - blobName.Length - 1)), new StorageSharedKeyCredential(accountName, accountKey), null).GetBlobContainerClient(blobName);
         }
 
         // Sets blob and file path
@@ -67,7 +67,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Reads the storage files
-        protected async Task<FileManagerResponse> GetFilesAsync(string path, string filter, FileManagerDirectoryContent[] selectedItems)
+        private async Task<FileManagerResponse> GetFilesAsync(string path, string filter, FileManagerDirectoryContent[] selectedItems)
         {
             FileManagerResponse readResponse = new FileManagerResponse();
             List<string> prefixes = new List<string>() { };
@@ -164,7 +164,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Returns the last modified date for directories
-        protected async Task<DateTime> DirectoryLastModified(string path)
+        private async Task<DateTime> DirectoryLastModified(string path)
         {
             foreach (Azure.Page<BlobItem> page in container.GetBlobs(prefix: path).AsPages())
             {
@@ -179,7 +179,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Converts the byte size value to appropriate value
-        protected string ByteConversion(long fileSize)
+        private string ByteConversion(long fileSize)
         {
             try
             {
@@ -199,7 +199,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Gets the size value of the directory
-        protected async Task<long> GetSizeValue(string path)
+        private async Task<long> GetSizeValue(string path)
         {
             foreach (Azure.Page<BlobItem> page in container.GetBlobs(prefix: path + "/").AsPages())
             {
@@ -220,7 +220,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Gets the details
-        protected async Task<FileManagerResponse> GetDetailsAsync(string path, string[] names, IEnumerable<object> selectedItems = null)
+        private async Task<FileManagerResponse> GetDetailsAsync(string path, string[] names, IEnumerable<object> selectedItems = null)
         {
             bool isVariousFolders = false;
             string previousPath = "";
@@ -340,7 +340,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Creates a new folder
-        protected async Task CreateFolderAsync(string path, string name, IEnumerable<object> selectedItems = null)
+        private async Task CreateFolderAsync(string path, string name, IEnumerable<object> selectedItems = null)
         {
             string checkName = name.Contains(" ") ? name.Replace(" ", "%20") : name;
             foreach (Azure.Page<BlobHierarchyItem> page in container.GetBlobsByHierarchy(prefix: path, delimiter: "/").AsPages())
@@ -365,7 +365,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Renames file(s) or folder(s)
-        protected async Task<FileManagerResponse> RenameAsync(string path, string oldName, string newName, bool showFileExtension, params FileManagerDirectoryContent[] selectedItems)
+        private async Task<FileManagerResponse> RenameAsync(string path, string oldName, string newName, bool showFileExtension, params FileManagerDirectoryContent[] selectedItems)
         {
             FileManagerResponse renameResponse = new FileManagerResponse();
             List<FileManagerDirectoryContent> details = new List<FileManagerDirectoryContent>();
@@ -449,7 +449,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Deletes file(s) or folder(s)
-        protected async Task<FileManagerResponse> RemoveAsync(string[] names, string path, params FileManagerDirectoryContent[] selectedItems)
+        private async Task<FileManagerResponse> RemoveAsync(string[] names, string path, params FileManagerDirectoryContent[] selectedItems)
         {
             FileManagerResponse removeResponse = new FileManagerResponse();
             List<FileManagerDirectoryContent> details = new List<FileManagerDirectoryContent>();
@@ -536,7 +536,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Upload file(s) to the storage
-        protected async Task<FileManagerResponse> UploadAsync(IEnumerable<IFormFile> files, string action, string path, int chunkIndex, int totalChunk, IEnumerable<object> selectedItems = null)
+        private async Task<FileManagerResponse> UploadAsync(IEnumerable<IFormFile> files, string action, string path, int chunkIndex, int totalChunk, IEnumerable<object> selectedItems = null)
         {
             FileManagerResponse uploadResponse = new FileManagerResponse();
             try
@@ -660,7 +660,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // Download file(s) from the storage
-        protected async Task<FileStreamResult> DownloadAsync(string path, string[] names = null, params FileManagerDirectoryContent[] selectedItems)
+        private async Task<FileStreamResult> DownloadAsync(string path, string[] names = null, params FileManagerDirectoryContent[] selectedItems)
         {
             try
             {
@@ -683,6 +683,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         // Initialize BlobClient object with the container, relative file path, and the name of the selected item in Azure Blob Storage.
                         BlobClient blockBlob = container.GetBlobClient(relativeFilePath + selectedItems[0].Name);
                         string absoluteFilePath = Path.GetTempPath() + selectedItems[0].Name;
+                        absoluteFilePath = SanitizeAndValidatePath(absoluteFilePath);
                         // Copy file from Azure Blob Storage to a temporary location using the CopyFileToTemp method.
                         await CopyFileToTemp(absoluteFilePath, blockBlob);
                         FileStream fileStreamInput = new FileStream(absoluteFilePath, FileMode.Open, FileAccess.Read, FileShare.Delete);
@@ -709,16 +710,18 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                 if (files.IsFile)
                                 {
                                     BlobClient blockBlob = container.GetBlobClient(relativeFilePath + files.Name);
-                                    if (File.Exists(Path.Combine(Path.GetTempPath(), files.Name)))
+                                    string safePath = SanitizeAndValidatePath(Path.Combine(Path.GetTempPath(), files.Name));
+                                    if (File.Exists(safePath))
                                     {
-                                        File.Delete(Path.Combine(Path.GetTempPath(), files.Name));
+                                        File.Delete(safePath);
                                     }
                                     string absoluteFilePath = Path.GetTempPath() + files.Name;
+                                    absoluteFilePath = SanitizeAndValidatePath(absoluteFilePath);
                                     await CopyFileToTemp(absoluteFilePath, blockBlob);
                                     zipEntry = archive.CreateEntryFromFile(absoluteFilePath, files.Name, CompressionLevel.Fastest);
-                                    if (File.Exists(Path.Combine(Path.GetTempPath(), files.Name)))
+                                    if (File.Exists(safePath))
                                     {
-                                        File.Delete(Path.Combine(Path.GetTempPath(), files.Name));
+                                        File.Delete(safePath);
                                     }
                                 }
                                 else
@@ -761,6 +764,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     int index = blob.Name.LastIndexOf("/");
                     string fileName = blob.Name.Substring(index + 1);
                     string absoluteFilePath = Path.GetTempPath() + blob.Name.Split("/").Last();
+                    absoluteFilePath = SanitizeAndValidatePath(absoluteFilePath);
                     if (File.Exists(absoluteFilePath))
                     {
                         File.Delete(absoluteFilePath);
@@ -1009,7 +1013,11 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             {
                 return null;
             }
-            return new FileStreamResult((new MemoryStream(new WebClient().DownloadData(filesPath + path))), "APPLICATION/octet-stream");
+            using (HttpClient client = new HttpClient())
+            {
+                var response = client.GetByteArrayAsync(filesPath + path).Result;
+                return new FileStreamResult(new MemoryStream(response), "APPLICATION/octet-stream");
+            }
         }
 
         private async Task MoveItems(string sourcePath, string targetPath, string name, string newName)
@@ -1343,6 +1351,30 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             };
 
             return JsonSerializer.Serialize(userData, options);
+        }
+
+        private string SanitizeAndValidatePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ArgumentException("Path cannot be null or empty.");
+            }
+            string decodedPath;
+            do
+            {
+                decodedPath = path;
+                path = Uri.UnescapeDataString(decodedPath);
+            } while (decodedPath != path);
+            string fullPath = Path.GetFullPath(path);
+
+            // Ensure the path is within the allowed directory
+            string allowedDirectory = Path.GetFullPath(Path.GetTempPath());
+            if (!fullPath.StartsWith(allowedDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Access to the path is not allowed.");
+            }
+
+            return fullPath;
         }
     }
 }
