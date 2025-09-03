@@ -385,7 +385,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     FileManagerDirectoryContent directoryContent = fileItem;
                     isFile = directoryContent.IsFile;
                     isAlreadyAvailable = await IsFileExists(path + newName);
-                    entry.Name = newName;
+                    entry.Name = isFile && !newName.EndsWith(selectedItems[0].Type) ? newName + selectedItems[0].Type : newName;
                     entry.Type = directoryContent.Type;
                     entry.IsFile = isFile;
                     entry.Size = directoryContent.Size;
