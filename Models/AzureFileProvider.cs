@@ -779,7 +779,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         File.Delete(absoluteFilePath);
                     }
                     await CopyFileToTemp(absoluteFilePath, blob);
-                    string entryPath = currentFolderName + "/" + fileName; // Use forward slash for zip standard
+                    string entryPath = currentFolderName + "/" + fileName;
                     string sanitizedEntryPath = SanitizeZipEntryName(entryPath);
                     if (!string.IsNullOrEmpty(sanitizedEntryPath))
                     {
