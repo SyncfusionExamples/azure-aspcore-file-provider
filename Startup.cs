@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Http; 
 
 namespace EJ2FileManagerService
 {
@@ -29,11 +30,15 @@ namespace EJ2FileManagerService
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
+            services.Configure<CookiePolicyOptions>(options =>
+            {
+               options.MinimumSameSitePolicy = SameSiteMode.Lax;
+            });
             services.AddCors(options =>
             {
                 options.AddPolicy("AllowAllOrigins", builder =>
                 {
-                    builder.AllowAnyOrigin()
+                    builder.WithOrigins("http://localhost:4200", "http://localhost:3000") 
                     .AllowAnyMethod()
                     .AllowAnyHeader();
                 });
@@ -52,6 +57,7 @@ namespace EJ2FileManagerService
                 app.UseHsts();
             }
             app.UseRouting();
+             app.UseCookiePolicy();
             app.UseCors("AllowAllOrigins");
             app.UseHttpsRedirection();
             app.UseEndpoints(endpoints => {
