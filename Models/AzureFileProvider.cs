@@ -718,7 +718,11 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                     string absoluteFilePath = Path.GetTempPath() + files.Name;
                                     absoluteFilePath = SanitizeAndValidatePath(absoluteFilePath);
                                     await CopyFileToTemp(absoluteFilePath, blockBlob);
-                                    zipEntry = archive.CreateEntryFromFile(absoluteFilePath, files.Name, CompressionLevel.Fastest);
+                                    string sanitizedEntryName = SanitizeZipEntryName(files.Name);
+                                    if (!string.IsNullOrEmpty(sanitizedEntryName))
+                                    {
+                                        zipEntry = archive.CreateEntryFromFile(absoluteFilePath, sanitizedEntryName, CompressionLevel.Fastest);
+                                    }
                                     if (File.Exists(safePath))
                                     {
                                         File.Delete(safePath);
@@ -755,7 +759,11 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Download folder(s) from the storage
         private async Task DownloadFolder(string path, string folderName, ZipArchiveEntry zipEntry, ZipArchive archive)
         {
-            zipEntry = archive.CreateEntry(currentFolderName + "/");
+            string sanitizedFolderName = SanitizeZipEntryName(currentFolderName + "/");
+            if (!string.IsNullOrEmpty(sanitizedFolderName))
+            {
+                zipEntry = archive.CreateEntry(sanitizedFolderName);
+            };
             foreach (Azure.Page<BlobHierarchyItem> page in container.GetBlobsByHierarchy(prefix: pathValue, delimiter: "/").AsPages())
             {
                 foreach (BlobItem item in page.Values.Where(item => item.IsBlob).Select(item => item.Blob))
@@ -763,14 +771,19 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     BlobClient blob = container.GetBlobClient(item.Name);
                     int index = blob.Name.LastIndexOf("/");
                     string fileName = blob.Name.Substring(index + 1);
-                    string absoluteFilePath = Path.GetTempPath() + blob.Name.Split("/").Last();
-                    absoluteFilePath = SanitizeAndValidatePath(absoluteFilePath);
+                    string tempFilePath = Path.GetTempPath() + blob.Name.Split("/").Last();
+                    string absoluteFilePath = SanitizeAndValidatePath(tempFilePath);
                     if (File.Exists(absoluteFilePath))
                     {
                         File.Delete(absoluteFilePath);
                     }
                     await CopyFileToTemp(absoluteFilePath, blob);
-                    zipEntry = archive.CreateEntryFromFile(absoluteFilePath, currentFolderName + "\\" + fileName, CompressionLevel.Fastest);
+                    string entryPath = currentFolderName + "/" + fileName;
+                    string sanitizedEntryPath = SanitizeZipEntryName(entryPath);
+                    if (!string.IsNullOrEmpty(sanitizedEntryPath))
+                    {
+                        zipEntry = archive.CreateEntryFromFile(absoluteFilePath, sanitizedEntryPath, CompressionLevel.Fastest);
+                    }
                     if (File.Exists(absoluteFilePath))
                     {
                         File.Delete(absoluteFilePath);
@@ -1375,6 +1388,22 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             }
 
             return fullPath;
+        }
+        
+        private string SanitizeZipEntryName(string entryName)
+        {
+            if (string.IsNullOrWhiteSpace(entryName))
+            {
+                return string.Empty;
+            }
+            string sanitized = entryName.Replace('\\', '/');
+            sanitized = sanitized.TrimStart('/'); 
+            while (sanitized.Contains(".."))
+            {
+                sanitized = sanitized.Replace("..", "_");
+            }
+            sanitized = sanitized.Replace(":", "_");
+            return sanitized;
         }
     }
 }
