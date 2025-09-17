@@ -478,8 +478,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         path = filesPath.Replace(blobPath, "") + fileItem.FilterPath;
                         BlobClient currentFile = container.GetBlobClient(path + fileItem.Name);
                         currentFile.DeleteIfExists();
-                        string tempFilePath = Path.Combine(Path.GetTempPath(), fileItem.Name);
-                        string absoluteFilePath = SanitizeAndValidatePath(tempFilePath);
+                        string absoluteFilePath = Path.Combine(Path.GetTempPath(), fileItem.Name);
                         DirectoryInfo tempDirectory = new DirectoryInfo(Path.GetTempPath());
                         foreach (string file in Directory.GetFiles(tempDirectory.ToString()))
                         {
