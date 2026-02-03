@@ -1332,6 +1332,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             folderPermission.Read = HasPermission(folderRule.Read);
             folderPermission.Upload = HasPermission(folderRule.Upload);
             folderPermission.Message = string.IsNullOrEmpty(folderRule.Message) ? string.Empty : folderRule.Message;
+            folderPermission.UploadContentFilter = folderRule.UploadContentFilter;
             return folderPermission;
         }
 
