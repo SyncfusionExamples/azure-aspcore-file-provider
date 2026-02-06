@@ -682,12 +682,15 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         relativeFilePath = relativeFilePath.Replace(blobPath, "");
                         // Initialize BlobClient object with the container, relative file path, and the name of the selected item in Azure Blob Storage.
                         BlobClient blockBlob = container.GetBlobClient(relativeFilePath + selectedItems[0].Name);
-                        string absoluteFilePath = Path.GetTempPath() + selectedItems[0].Name;
-                        absoluteFilePath = SanitizeAndValidatePath(absoluteFilePath);
-                        // Copy file from Azure Blob Storage to a temporary location using the CopyFileToTemp method.
-                        await CopyFileToTemp(absoluteFilePath, blockBlob);
-                        FileStream fileStreamInput = new FileStream(absoluteFilePath, FileMode.Open, FileAccess.Read, FileShare.Delete);
-                        FileStreamResult fileStreamResult = new FileStreamResult(fileStreamInput, "APPLICATION/octet-stream");
+
+                        var download = await blockBlob.DownloadStreamingAsync();
+                        string contentType = download.Value.Details.ContentType;
+                        if (string.IsNullOrWhiteSpace(contentType))
+                        {
+                            contentType = "application/octet-stream";
+                        }
+
+                        FileStreamResult fileStreamResult = new FileStreamResult(download.Value.Content, contentType);
                         fileStreamResult.FileDownloadName = selectedItems[0].Name;
                         return fileStreamResult;
                     }
@@ -1021,16 +1024,39 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         // Returns the image 
         public FileStreamResult GetImage(string path, string id, bool allowCompress, ImageSize size, params FileManagerDirectoryContent[] data)
         {
-            AccessPermission PathPermission = GetFilePermission("Files" + path);
-            if (PathPermission != null && !PathPermission.Read)
+            if (string.IsNullOrWhiteSpace(path))
             {
                 return null;
             }
-            using (HttpClient client = new HttpClient())
+
+            string normalizedPath = path.Replace('\\', '/');
+            string blobName = normalizedPath.TrimStart('/');
+            string normalizedRoot = (rootPath ?? string.Empty).Replace('\\', '/').Trim('/');
+            if (!string.IsNullOrEmpty(normalizedRoot) && !blobName.StartsWith(normalizedRoot + "/", StringComparison.OrdinalIgnoreCase) && !blobName.Equals(normalizedRoot, StringComparison.OrdinalIgnoreCase))
             {
-                var response = client.GetByteArrayAsync(filesPath + path).Result;
-                return new FileStreamResult(new MemoryStream(response), "APPLICATION/octet-stream");
+                blobName = (normalizedRoot + "/" + blobName).Trim('/');
             }
+
+            AccessPermission pathPermission = GetFilePermission(blobName);
+            if (pathPermission != null && !pathPermission.Read)
+            {
+                return null;
+            }
+
+            BlobClient blobClient = container.GetBlobClient(blobName);
+            if (!blobClient.Exists())
+            {
+                return null;
+            }
+
+            var download = blobClient.DownloadStreaming();
+            string contentType = download.Value.Details.ContentType;
+            if (string.IsNullOrWhiteSpace(contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+
+            return new FileStreamResult(download.Value.Content, contentType);
         }
 
         private async Task MoveItems(string sourcePath, string targetPath, string name, string newName)
