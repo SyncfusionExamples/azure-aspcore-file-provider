@@ -183,7 +183,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         {
             try
             {
-                string[] index = {"B","KB","MB","GB","TB","PB","EB"};
+                string[] index = { "B", "KB", "MB", "GB", "TB", "PB", "EB" };
                 // Longs run out around EB
                 if (fileSize == 0)
                 {
@@ -219,6 +219,59 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             return GetDetailsAsync(path, names, data).GetAwaiter().GetResult();
         }
 
+        private string SanitizeBlobKey(string path, string name = null, bool isDirectory = false)
+        {
+            string normalizedPath = (path ?? string.Empty).Replace('\\', '/').Trim();
+            string normalizedName = (name ?? string.Empty).Replace('\\', '/').Trim('/');
+
+            string prev;
+            do { prev = normalizedPath; normalizedPath = Uri.UnescapeDataString(prev); } while (prev != normalizedPath);
+            do { prev = normalizedName; normalizedName = Uri.UnescapeDataString(prev); } while (prev != normalizedName);
+
+            normalizedPath = normalizedPath.Trim('/');
+            while (normalizedPath.Contains("//")) normalizedPath = normalizedPath.Replace("//", "/");
+
+            if (!string.IsNullOrEmpty(normalizedName) && normalizedName.Contains('/'))
+            {
+                int lastSlash = normalizedName.LastIndexOf('/');
+                string extraPath = normalizedName.Substring(0, lastSlash).Trim('/');
+                string leafName = normalizedName.Substring(lastSlash + 1);
+
+                if (extraPath.Contains("..")) throw new InvalidOperationException("Invalid path segment.");
+                normalizedPath = string.IsNullOrEmpty(normalizedPath) ? extraPath
+                               : string.IsNullOrEmpty(extraPath) ? normalizedPath
+                               : normalizedPath + "/" + extraPath;
+
+                normalizedName = leafName;
+                while (normalizedPath.Contains("//")) normalizedPath = normalizedPath.Replace("//", "/");
+                normalizedPath = normalizedPath.Trim('/');
+            }
+
+            if (normalizedPath.Contains("..") || normalizedName.Contains(".."))
+                throw new InvalidOperationException("Invalid path segment.");
+
+            normalizedName = normalizedName.Trim().Trim('.');
+
+            string key;
+            if (string.IsNullOrEmpty(normalizedPath))
+                key = normalizedName;
+            else if (string.IsNullOrEmpty(normalizedName))
+                key = normalizedPath;
+            else
+                key = normalizedPath + "/" + normalizedName;
+
+            if (isDirectory)
+            {
+                if (!string.IsNullOrEmpty(key) && !key.EndsWith("/")) key += "/";
+            }
+            else
+            {
+                if (key.EndsWith("/")) key = key.TrimEnd('/');
+            }
+
+            return key ?? string.Empty;
+        }
+
         // Gets the details
         private async Task<FileManagerResponse> GetDetailsAsync(string path, string[] names, IEnumerable<object> selectedItems = null)
         {
@@ -249,7 +302,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         {
                             if (fileItem.IsFile)
                             {
-                                BlobClient blob = container.GetBlobClient(rootPath + fileItem.FilterPath + fileItem.Name);
+                                BlobClient blob = container.GetBlobClient(SanitizeBlobKey(rootPath + fileItem.FilterPath, fileItem.Name, false));
                                 BlobProperties properties = await blob.GetPropertiesAsync();
                                 isFile = fileItem.IsFile;
                                 fileDetails.IsFile = isFile;
@@ -352,7 +405,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 }
                 else
                 {
-                    BlobClient blob = container.GetBlobClient(path + name + "/About.txt");
+                    BlobClient blob = container.GetBlobClient(SanitizeBlobKey(path, name, true) + "About.txt");
                     await blob.UploadAsync(new MemoryStream(Encoding.UTF8.GetBytes("This is an auto generated file")), new BlobHttpHeaders() { ContentType = "text/plain" });
                 }
             }
@@ -384,7 +437,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 {
                     FileManagerDirectoryContent directoryContent = fileItem;
                     isFile = directoryContent.IsFile;
-                    isAlreadyAvailable = await IsFileExists(path + newName);
+                    isAlreadyAvailable = await IsFileExists(SanitizeBlobKey(path, newName, false));
                     entry.Name = isFile && !newName.EndsWith(selectedItems[0].Type) ? newName + selectedItems[0].Type : newName;
                     entry.Type = directoryContent.Type;
                     entry.IsFile = isFile;
@@ -403,8 +456,8 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             oldName = oldName + selectedItems[0].Type;
                             newName = newName + selectedItems[0].Type;
                         }
-                        BlobClient existBlob = container.GetBlobClient(path + oldName);
-                        await (container.GetBlobClient(path + newName)).StartCopyFromUriAsync(existBlob.Uri);
+                        BlobClient existBlob = container.GetBlobClient(SanitizeBlobKey(path, oldName, false));
+                        await (container.GetBlobClient(SanitizeBlobKey(path, newName, false))).StartCopyFromUriAsync(existBlob.Uri);
                         await existBlob.DeleteAsync();
                     }
                     else
@@ -414,8 +467,8 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                             foreach (BlobItem item in page.Values)
                             {
                                 string name = Uri.UnescapeDataString(container.GetBlobClient(item.Name).Uri.AbsolutePath.Replace(container.GetBlobClient(path + oldName).Uri.AbsolutePath + "/", "").Replace("%20", " "));
-                                await (container.GetBlobClient(path + newName + "/" + name)).StartCopyFromUriAsync(container.GetBlobClient(item.Name).Uri);
-                                await container.GetBlobClient(path + oldName + "/" + name).DeleteAsync();
+                                await (container.GetBlobClient(SanitizeBlobKey(path + newName, name, false))).StartCopyFromUriAsync(container.GetBlobClient(item.Name).Uri);
+                                await container.GetBlobClient(SanitizeBlobKey(path + oldName, name, false)).DeleteAsync();
                             }
                         }
                     }
@@ -476,7 +529,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                     if (fileItem.IsFile)
                     {
                         path = filesPath.Replace(blobPath, "") + fileItem.FilterPath;
-                        BlobClient currentFile = container.GetBlobClient(path + fileItem.Name);
+                        BlobClient currentFile = container.GetBlobClient(SanitizeBlobKey(path, fileItem.Name, false));
                         currentFile.DeleteIfExists();
                         string absoluteFilePath = Path.Combine(Path.GetTempPath(), fileItem.Name);
                         DirectoryInfo tempDirectory = new DirectoryInfo(Path.GetTempPath());
@@ -551,10 +604,10 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                 {
                     if (files != null)
                     {
-                        BlockBlobClient blockBlobClient = container.GetBlockBlobClient(path.Replace(blobPath, "") + file.FileName);
-                        BlobClient blockBlob = container.GetBlobClient(path.Replace(blobPath, "") + file.FileName);
+                        BlockBlobClient blockBlobClient = container.GetBlockBlobClient(SanitizeBlobKey(path.Replace(blobPath, ""), file.FileName, false));
+                        BlobClient blockBlob = container.GetBlobClient(SanitizeBlobKey(path.Replace(blobPath, ""), file.FileName, false));
                         string fileName = file.FileName;
-                        string absoluteFilePath = Path.Combine(path, fileName);
+                        string absoluteFilePath = SanitizeBlobKey(path.Replace(blobPath, ""), fileName, false);
                         if (action == "save")
                         {
                             if (!await IsFileExists(absoluteFilePath))
@@ -591,8 +644,8 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                 fileCount++;
                             }
                             newAbsoluteFilePath = newFileName + (fileCount > 0 ? "(" + fileCount.ToString() + ")" : "") + Path.GetExtension(fileName);
-                            BlobClient newBlob = container.GetBlobClient(path.Replace(blobPath, "") + newAbsoluteFilePath);
-                            BlockBlobClient newBlockBlobClient = container.GetBlockBlobClient(path.Replace(blobPath, "") + newAbsoluteFilePath);
+                            BlobClient newBlob = container.GetBlobClient(SanitizeBlobKey(path.Replace(blobPath, ""), newAbsoluteFilePath, false));
+                            BlockBlobClient newBlockBlobClient = container.GetBlockBlobClient(SanitizeBlobKey(path.Replace(blobPath, ""), newAbsoluteFilePath, false));
                             await PerformUpload(file, newBlockBlobClient, newBlob, chunkIndex, totalChunk);
                         }
                     }
@@ -681,7 +734,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         string relativeFilePath = filesPath + selectedItems[0].FilterPath;
                         relativeFilePath = relativeFilePath.Replace(blobPath, "");
                         // Initialize BlobClient object with the container, relative file path, and the name of the selected item in Azure Blob Storage.
-                        BlobClient blockBlob = container.GetBlobClient(relativeFilePath + selectedItems[0].Name);
+                        BlobClient blockBlob = container.GetBlobClient(SanitizeBlobKey(relativeFilePath, selectedItems[0].Name, false));
                         string absoluteFilePath = Path.GetTempPath() + selectedItems[0].Name;
                         absoluteFilePath = SanitizeAndValidatePath(absoluteFilePath);
                         // Copy file from Azure Blob Storage to a temporary location using the CopyFileToTemp method.
@@ -996,8 +1049,8 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             {
                 newName = name;
             }
-            BlobClient existBlob = container.GetBlobClient(sourcePath + name);
-            BlobClient newBlob = container.GetBlobClient(targetPath + newName);
+            BlobClient existBlob = container.GetBlobClient(SanitizeBlobKey(sourcePath, name, false));
+            BlobClient newBlob = container.GetBlobClient(SanitizeBlobKey(targetPath, newName, false));
             newBlob.StartCopyFromUri(existBlob.Uri);
         }
 
@@ -1040,7 +1093,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
 
         private async Task MoveItems(string sourcePath, string targetPath, string name, string newName)
         {
-            BlobClient existBlob = container.GetBlobClient(sourcePath + name);
+            BlobClient existBlob = container.GetBlobClient(SanitizeBlobKey(sourcePath, name, false));
             CopyItems(sourcePath, targetPath, name, newName);
             await existBlob.DeleteAsync();
         }
