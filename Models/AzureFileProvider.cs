@@ -674,7 +674,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
 
         private async Task PerformUpload(IFormFile file, BlockBlobClient blockBlobClient, BlobClient blockBlob, int chunkIndex, int totalChunk)
         {
-            if (file.ContentType == "application/octet-stream")
+            if (file.ContentType == "application/octet-stream" && totalChunk > 0)
             {
                 using (var fileStream = file.OpenReadStream())
                 {
