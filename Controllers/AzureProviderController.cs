@@ -27,7 +27,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
             filePath = filePath.Replace("../", "");
             blobPath = (blobPath.Substring(blobPath.Length - 1) != "/") ? blobPath + "/" : blobPath.TrimEnd(new[] { '/', '\\' }) + "/";
             filePath = (filePath.Substring(filePath.Length - 1) == "/") ? filePath.TrimEnd(new[] { '/', '\\' }) : filePath;
-            this.operation.SetBlobContainer(blobPath, filePath);            
+            this.operation.SetBlobContainer(blobPath, filePath);
             this.operation.RegisterAzure("<--accountName-->", "<--accountKey-->", "<--blobName-->");
             //----------
             //For example 
@@ -38,6 +38,7 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         [HttpPost("AzureFileOperations")]
         public object AzureFileOperations([FromBody] FileManagerDirectoryContent args)
         {
+            this.operation.SetRules(GetRules());
             if (args.Path != "")
             {
                 string startPath = blobPath;
@@ -126,6 +127,20 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         public IActionResult AzureGetImage(FileManagerDirectoryContent args)
         {
             return this.operation.GetImage(args.Path, args.Id, true, null, args.Data);
+        }
+
+        public AccessDetails GetRules()
+        {
+            AccessDetails accessDetails = new AccessDetails();
+            List<AccessRule> Rules = new List<AccessRule> {
+                // Deny writing for particular file
+                new AccessRule { Path = "Files/Documents/EJ2 File Manager.docx", Role = "Document Manager", Read = Permission.Allow, Write = Permission.Deny, Copy = Permission.Deny, Download = Permission.Deny, IsFile = true },
+                // Deny based on the type
+                new AccessRule { Path = "Files/Pictures", Role = "Document Manager", Write = Permission.Deny, WriteContents = Permission.Deny, Upload = Permission.Allow, UploadContentFilter = UploadContentFilter.FoldersOnly, IsFile = false },
+            };
+            accessDetails.AccessRules = Rules;
+            accessDetails.Role = "Document Manager";
+            return accessDetails;
         }
     }
 
