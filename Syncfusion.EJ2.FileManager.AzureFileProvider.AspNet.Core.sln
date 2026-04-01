@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 18
-VisualStudioVersion = 18.5.11626.173 insiders
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28803.202
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Syncfusion.EJ2.FileManager.AzureFileProvider.AspNet.Core", "Syncfusion.EJ2.FileManager.AzureFileProvider.AspNet.Core.csproj", "{ECB6CF60-5FB8-4331-297F-8344FADFA74D}"
 EndProject
@@ -9,15 +9,12 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-		Release-Xml|Any CPU = Release-Xml|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{ECB6CF60-5FB8-4331-297F-8344FADFA74D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{ECB6CF60-5FB8-4331-297F-8344FADFA74D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ECB6CF60-5FB8-4331-297F-8344FADFA74D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ECB6CF60-5FB8-4331-297F-8344FADFA74D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{ECB6CF60-5FB8-4331-297F-8344FADFA74D}.Release-Xml|Any CPU.ActiveCfg = Release-Xml|Any CPU
-		{ECB6CF60-5FB8-4331-297F-8344FADFA74D}.Release-Xml|Any CPU.Build.0 = Release-Xml|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
