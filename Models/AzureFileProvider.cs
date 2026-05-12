@@ -471,6 +471,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                 await container.GetBlobClient(SanitizeBlobKey(path + oldName, name, false)).DeleteAsync();
                             }
                         }
+                        
+                        BlobClient oldFolderMarker = container.GetBlobClient(SanitizeBlobKey(path, oldName, true));
+                        await oldFolderMarker.DeleteIfExistsAsync();
                     }
                     renameResponse.Files = details;
                 }
@@ -558,14 +561,16 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                 BlobClient currentFile = container.GetBlobClient(item.Name);
                                 await currentFile.DeleteAsync();
                             }
-                            entry.Name = fileItem.Name;
-                            entry.Type = fileItem.Type;
-                            entry.IsFile = fileItem.IsFile;
-                            entry.Size = fileItem.Size;
-                            entry.HasChild = fileItem.HasChild;
-                            entry.FilterPath = path;
-                            details.Add(entry);
                         }
+                        BlobClient folderMarker = container.GetBlobClient(SanitizeBlobKey(path, fileItem.Name, true));
+                        await folderMarker.DeleteIfExistsAsync();
+                        entry.Name = fileItem.Name;
+                        entry.Type = fileItem.Type;
+                        entry.IsFile = fileItem.IsFile;
+                        entry.Size = fileItem.Size;
+                        entry.HasChild = fileItem.HasChild;
+                        entry.FilterPath = path;
+                        details.Add(entry);
                     }
                 }
             }
@@ -1288,8 +1293,10 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
         protected virtual string GetPath(string path)
         {
-            String fullPath = (this.blobPath + path);
-            return fullPath;
+            if (path.StartsWith(this.blobPath, StringComparison.OrdinalIgnoreCase))
+                return path;
+
+            return this.blobPath + path;
         }
         protected virtual bool HasPermission(Permission rule)
         {
@@ -1349,6 +1356,19 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         {
                             FilePermission = UpdateFileRules(FilePermission, fileRule);
                         }
+                        else if (currentPath.IndexOf(GetPath(fileRule.Path)) == 0)
+                        {
+                            // Add boundary check - ensure it matches folder boundary with /
+                            string rulePath = GetPath(fileRule.Path);
+                            if (rulePath.EndsWith("/"))
+                            {
+                                FilePermission = UpdateFileRules(FilePermission, fileRule);
+                            }
+                            else if (currentPath.IndexOf(rulePath + "/") == 0)
+                            {
+                                FilePermission = UpdateFileRules(FilePermission, fileRule);
+                            }
+                        }
                     }
                 }
                 return FilePermission;
@@ -1374,7 +1394,26 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         }
                         else if ((location + name).IndexOf(GetPath(folderRule.Path)) == 0)
                         {
-                            FilePermission = UpdateFolderRules(FilePermission, folderRule);
+                            // Add boundary check - ensure it matches folder boundary with /
+                            string rulePath = GetPath(folderRule.Path);
+                            string fullPath = location + name;
+
+                            if (rulePath.EndsWith("/"))
+                            {
+                                // Rule already ends with /, just check prefix
+                                if (fullPath.IndexOf(rulePath) == 0)
+                                {
+                                    FilePermission = UpdateFolderRules(FilePermission, folderRule);
+                                }
+                            }
+                            else
+                            {
+                                // Rule doesn't end with /, add it for proper boundary matching
+                                if (fullPath.IndexOf(rulePath + "/") == 0)
+                                {
+                                    FilePermission = UpdateFolderRules(FilePermission, folderRule);
+                                }
+                            }
                         }
                     }
                 }
