@@ -471,6 +471,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                 await container.GetBlobClient(SanitizeBlobKey(path + oldName, name, false)).DeleteAsync();
                             }
                         }
+                        
+                        BlobClient oldFolderMarker = container.GetBlobClient(SanitizeBlobKey(path, oldName, true));
+                        await oldFolderMarker.DeleteIfExistsAsync();
                     }
                     renameResponse.Files = details;
                 }
@@ -558,14 +561,16 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                                 BlobClient currentFile = container.GetBlobClient(item.Name);
                                 await currentFile.DeleteAsync();
                             }
-                            entry.Name = fileItem.Name;
-                            entry.Type = fileItem.Type;
-                            entry.IsFile = fileItem.IsFile;
-                            entry.Size = fileItem.Size;
-                            entry.HasChild = fileItem.HasChild;
-                            entry.FilterPath = path;
-                            details.Add(entry);
                         }
+                        BlobClient folderMarker = container.GetBlobClient(SanitizeBlobKey(path, fileItem.Name, true));
+                        await folderMarker.DeleteIfExistsAsync();
+                        entry.Name = fileItem.Name;
+                        entry.Type = fileItem.Type;
+                        entry.IsFile = fileItem.IsFile;
+                        entry.Size = fileItem.Size;
+                        entry.HasChild = fileItem.HasChild;
+                        entry.FilterPath = path;
+                        details.Add(entry);
                     }
                 }
             }
@@ -928,6 +933,12 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         accessMessage = permission.Message;
                         throw new UnauthorizedAccessException("'" + path + item.Name + "' is not accessible. You need permission to perform the copy action.");
                     }
+                    AccessPermission targetPermission = GetPathPermission(targetPath, false);
+                    if (targetPermission != null && (!targetPermission.Read || !targetPermission.WriteContents))
+                    {
+                        accessMessage = targetPermission.Message;
+                        throw new UnauthorizedAccessException("'" + this.getFileNameFromPath(targetPath) + "' is not accessible. You need permission to perform the copy action.");
+                    }
                     if (item.IsFile)
                     {
                         if (await IsFileExists(targetPath + item.Name))
@@ -1139,11 +1150,17 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         accessMessage = permission.Message;
                         throw new UnauthorizedAccessException("'" + (path + item.Name) + "' is not accessible. You need permission to perform the write action.");
                     }
-                    AccessPermission PathPermission = GetPathPermission(path, item.IsFile);
+                    AccessPermission PathPermission = GetPathPermission(path, false);
                     if (PathPermission != null && (!PathPermission.Read || !PathPermission.WriteContents))
                     {
                         accessMessage = PathPermission.Message;
                         throw new UnauthorizedAccessException("'" + this.getFileNameFromPath(path) + "' is not accessible. You need permission to perform the write action.");
+                    }
+                    AccessPermission targetPermission = GetPathPermission(targetPath, false);
+                    if (targetPermission != null && (!targetPermission.Read || !targetPermission.WriteContents))
+                    {
+                        accessMessage = targetPermission.Message;
+                        throw new UnauthorizedAccessException("'" + this.getFileNameFromPath(targetPath) + "' is not accessible. You need permission to perform the write action.");
                     }
                     if (item.IsFile)
                     {
@@ -1288,8 +1305,10 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
         protected virtual string GetPath(string path)
         {
-            String fullPath = (this.blobPath + path);
-            return fullPath;
+            if (path.StartsWith(this.blobPath, StringComparison.OrdinalIgnoreCase))
+                return path;
+
+            return this.blobPath + path;
         }
         protected virtual bool HasPermission(Permission rule)
         {
@@ -1349,6 +1368,19 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         {
                             FilePermission = UpdateFileRules(FilePermission, fileRule);
                         }
+                        else if (currentPath.IndexOf(GetPath(fileRule.Path)) == 0)
+                        {
+                            // Add boundary check - ensure it matches folder boundary with /
+                            string rulePath = GetPath(fileRule.Path);
+                            if (rulePath.EndsWith("/"))
+                            {
+                                FilePermission = UpdateFileRules(FilePermission, fileRule);
+                            }
+                            else if (currentPath.IndexOf(rulePath + "/") == 0)
+                            {
+                                FilePermission = UpdateFileRules(FilePermission, fileRule);
+                            }
+                        }
                     }
                 }
                 return FilePermission;
@@ -1356,6 +1388,7 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
             else
             {
                 if (this.AccessDetails.AccessRules == null) { return null; }
+                string currentPath = GetPath(location);
                 foreach (AccessRule folderRule in AccessDetails.AccessRules)
                 {
                     if (folderRule.Path != null && folderRule.IsFile == false && (folderRule.Role == null || folderRule.Role == AccessDetails.Role))
@@ -1363,18 +1396,37 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         if (folderRule.Path.IndexOf("*") > -1)
                         {
                             string parentPath = folderRule.Path.Substring(0, folderRule.Path.IndexOf("*"));
-                            if ((location + name).IndexOf(GetPath(parentPath)) == 0 || parentPath == "")
+                            if ((currentPath + name).IndexOf(GetPath(parentPath)) == 0 || parentPath == "")
                             {
                                 FilePermission = UpdateFolderRules(FilePermission, folderRule);
                             }
                         }
-                        else if (GetPath(folderRule.Path) == (location + name) || GetPath(folderRule.Path) == (location + name + Path.DirectorySeparatorChar) || GetPath(folderRule.Path) == (location + name + "/"))
+                        else if (GetPath(folderRule.Path) == (currentPath + name) || GetPath(folderRule.Path) == (currentPath + name + Path.DirectorySeparatorChar) || GetPath(folderRule.Path) == (currentPath + name + "/"))
                         {
                             FilePermission = UpdateFolderRules(FilePermission, folderRule);
                         }
-                        else if ((location + name).IndexOf(GetPath(folderRule.Path)) == 0)
+                        else if ((currentPath + name).IndexOf(GetPath(folderRule.Path)) == 0)
                         {
-                            FilePermission = UpdateFolderRules(FilePermission, folderRule);
+                            // Add boundary check - ensure it matches folder boundary with /
+                            string rulePath = GetPath(folderRule.Path);
+                            string fullPath = currentPath + name;
+
+                            if (rulePath.EndsWith("/"))
+                            {
+                                // Rule already ends with /, just check prefix
+                                if (fullPath.IndexOf(rulePath) == 0)
+                                {
+                                    FilePermission = UpdateFolderRules(FilePermission, folderRule);
+                                }
+                            }
+                            else
+                            {
+                                // Rule doesn't end with /, add it for proper boundary matching
+                                if (fullPath.IndexOf(rulePath + "/") == 0)
+                                {
+                                    FilePermission = UpdateFolderRules(FilePermission, folderRule);
+                                }
+                            }
                         }
                     }
                 }
