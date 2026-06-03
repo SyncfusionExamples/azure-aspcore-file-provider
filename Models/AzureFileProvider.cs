@@ -1341,7 +1341,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         if (fileRule.Path.IndexOf("*.*") > -1)
                         {
                             string parentPath = fileRule.Path.Substring(0, fileRule.Path.IndexOf("*.*"));
-                            if (currentPath.IndexOf(GetPath(parentPath)) == 0 || parentPath == "")
+                            parentPath = parentPath.TrimEnd('/');
+                            string fullPath = (currentPath + name).TrimEnd('/');
+                            if (fullPath.IndexOf(GetPath(parentPath)) == 0 || parentPath == "")
                             {
                                 FilePermission = UpdateFileRules(FilePermission, fileRule);
                             }
@@ -1350,7 +1352,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         {
                             string pathExtension = Path.GetExtension(fileRule.Path).ToLower();
                             string parentPath = fileRule.Path.Substring(0, fileRule.Path.IndexOf("*."));
-                            if ((GetPath(parentPath) == currentPath || parentPath == "") && nameExtension == pathExtension)
+                            parentPath = parentPath.TrimEnd('/');
+                            string fullPath = (currentPath + name).TrimEnd('/');
+                            if ((GetPath(parentPath) == fullPath || parentPath == "") && nameExtension == pathExtension)
                             {
                                 FilePermission = UpdateFileRules(FilePermission, fileRule);
                             }
@@ -1359,7 +1363,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         {
                             string pathName = Path.GetFileNameWithoutExtension(fileRule.Path);
                             string parentPath = fileRule.Path.Substring(0, fileRule.Path.IndexOf(pathName + ".*"));
-                            if ((GetPath(parentPath) == currentPath || parentPath == "") && fileName == pathName)
+                            parentPath = parentPath.TrimEnd('/');
+                            string fullPath = (currentPath + name).TrimEnd('/');
+                            if ((GetPath(parentPath) == fullPath || parentPath == "") && fileName == pathName)
                             {
                                 FilePermission = UpdateFileRules(FilePermission, fileRule);
                             }
@@ -1396,7 +1402,9 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
                         if (folderRule.Path.IndexOf("*") > -1)
                         {
                             string parentPath = folderRule.Path.Substring(0, folderRule.Path.IndexOf("*"));
-                            if ((currentPath + name).IndexOf(GetPath(parentPath)) == 0 || parentPath == "")
+                            parentPath = parentPath.TrimEnd('/');
+                            string fullPath = (currentPath + name).TrimEnd('/');
+                            if (fullPath.IndexOf(GetPath(parentPath)) == 0 || parentPath == "")
                             {
                                 FilePermission = UpdateFolderRules(FilePermission, folderRule);
                             }
