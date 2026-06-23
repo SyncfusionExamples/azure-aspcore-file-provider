@@ -1,6 +1,6 @@
 # azure-aspcore-file-provider
 
-This repository contains the ASP.NET Core Azure storage file system providers for the Syncfusion File Manager component.
+This repository contains the ASP.NET Core Azure storage file system providers for the File Manager component.
 
 ## Key Features
 
