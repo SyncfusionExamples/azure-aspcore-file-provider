@@ -21,14 +21,27 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         public AzureProviderController(IWebHostEnvironment hostingEnvironment)
         {
             this.operation = new AzureFileProvider();
-            blobPath = "<--blobPath-->";
-            filePath = "<--filePath-->";
+
+            string accountName = Environment.GetEnvironmentVariable("AZURE_ACCOUNT_NAME");
+            string accountKey = Environment.GetEnvironmentVariable("AZURE_ACCOUNT_KEY");
+            string blobName = Environment.GetEnvironmentVariable("AZURE_BLOB_NAME");
+            string blobFolderPath = Environment.GetEnvironmentVariable("AZURE_BLOB_PATH");
+            if (string.IsNullOrEmpty(accountName))
+            {
+                accountName = "<--accountName-->";
+                accountKey = "<--accountKey-->";
+                blobName = "<--blobName-->";
+                blobFolderPath = "<--blobPath-->";
+            }
+
+            blobPath = $"https://{accountName}.blob.core.windows.net/{blobName}/";
+            filePath = blobFolderPath.StartsWith("http") ? blobFolderPath : $"https://{accountName}.blob.core.windows.net/{blobName}/{blobFolderPath}";
             blobPath = blobPath.Replace("../", "");
             filePath = filePath.Replace("../", "");
             blobPath = (blobPath.Substring(blobPath.Length - 1) != "/") ? blobPath + "/" : blobPath.TrimEnd(new[] { '/', '\\' }) + "/";
             filePath = (filePath.Substring(filePath.Length - 1) == "/") ? filePath.TrimEnd(new[] { '/', '\\' }) : filePath;
             this.operation.SetBlobContainer(blobPath, filePath);
-            this.operation.RegisterAzure("<--accountName-->", "<--accountKey-->", "<--blobName-->");
+            this.operation.RegisterAzure(accountName, accountKey, blobName);
             //----------
             //For example 
             //this.operation.setBlobContainer("https://azure_service_account.blob.core.windows.net/files/", "https://azure_service_account.blob.core.windows.net/files/Files");

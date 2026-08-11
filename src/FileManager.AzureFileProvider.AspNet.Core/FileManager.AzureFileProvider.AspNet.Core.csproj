@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
    <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
 	<MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
     <RootNamespace>FileManager.AzureFileProvider</RootNamespace>
     <AssemblyName>FileManager.AzureFileProvider</AssemblyName>
@@ -22,7 +22,7 @@
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup> 
     <PackageReference Include="Azure.Storage.Blobs" Version="12.20.0" />
   </ItemGroup>
 

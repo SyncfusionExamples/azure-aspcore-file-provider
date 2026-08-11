@@ -38,7 +38,7 @@ namespace EJ2FileManagerService
             {
                 options.AddPolicy("AllowAllOrigins", builder =>
                 {
-                    builder.WithOrigins("http://localhost:4200", "http://localhost:3000")
+                    builder.AllowAnyOrigin()
                     .AllowAnyMethod()
                     .AllowAnyHeader();
                 });
