@@ -3,7 +3,6 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 RUN apt-get update -y && apt-get install fontconfig -y
 WORKDIR /app
 
-
 ENV SYNCFUSION_LICENSE_KEY=""
 ENV AZURE_ACCOUNT_NAME=""
 ENV AZURE_ACCOUNT_KEY=""
