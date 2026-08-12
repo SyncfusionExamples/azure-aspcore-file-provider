@@ -22,20 +22,22 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         {
             this.operation = new AzureFileProvider();
 
+            // Read the Azure Blob configuration from environment variables.
+            // These values are provided through Docker (docker-compose.yml / Dockerfile) or the host environment.
             string accountName = Environment.GetEnvironmentVariable("AZURE_ACCOUNT_NAME");
             string accountKey = Environment.GetEnvironmentVariable("AZURE_ACCOUNT_KEY");
             string blobName = Environment.GetEnvironmentVariable("AZURE_BLOB_NAME");
-            string blobFolderPath = Environment.GetEnvironmentVariable("AZURE_BLOB_PATH");
+            blobPath = Environment.GetEnvironmentVariable("AZURE_BLOB_PATH");
+            filePath = Environment.GetEnvironmentVariable("AZURE_FILE_PATH");
+            // If the Azure account name is not configured, fall back to the placeholder defaults for local development.
             if (string.IsNullOrEmpty(accountName))
             {
                 accountName = "<--accountName-->";
                 accountKey = "<--accountKey-->";
                 blobName = "<--blobName-->";
-                blobFolderPath = "<--blobPath-->";
+                blobPath = "<--blobPath-->";
+                filePath = "<--filePath-->";
             }
-
-            blobPath = $"https://{accountName}.blob.core.windows.net/{blobName}/";
-            filePath = blobFolderPath.StartsWith("http") ? blobFolderPath : $"https://{accountName}.blob.core.windows.net/{blobName}/{blobFolderPath}";
             blobPath = blobPath.Replace("../", "");
             filePath = filePath.Replace("../", "");
             blobPath = (blobPath.Substring(blobPath.Length - 1) != "/") ? blobPath + "/" : blobPath.TrimEnd(new[] { '/', '\\' }) + "/";
