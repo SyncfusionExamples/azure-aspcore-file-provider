@@ -25,7 +25,7 @@
       },
       "applicationUrl": "http://localhost:62870/"
     },
-            "Container (Dockerfile)": {
+      "Container (Dockerfile)": {
       "commandName": "Docker",
       "launchBrowser": true,
       "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}/api/test",
