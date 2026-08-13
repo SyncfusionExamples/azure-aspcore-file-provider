@@ -29,15 +29,17 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
             string blobName = Environment.GetEnvironmentVariable("AZURE_BLOB_NAME");
             blobPath = Environment.GetEnvironmentVariable("AZURE_BLOB_PATH");
             filePath = Environment.GetEnvironmentVariable("AZURE_FILE_PATH");
-            // If the Azure account name is not configured, fall back to the placeholder defaults for local development.
-            if (string.IsNullOrEmpty(accountName))
-            {
+            // Use placeholder values for manual configuration
+            if (string.IsNullOrWhiteSpace(accountName))
                 accountName = "<--accountName-->";
+            if (string.IsNullOrWhiteSpace(accountKey))
                 accountKey = "<--accountKey-->";
+            if (string.IsNullOrWhiteSpace(blobName))
                 blobName = "<--blobName-->";
+            if (string.IsNullOrWhiteSpace(blobPath))
                 blobPath = "<--blobPath-->";
+            if (string.IsNullOrWhiteSpace(filePath))
                 filePath = "<--filePath-->";
-            }
             blobPath = blobPath.Replace("../", "");
             filePath = filePath.Replace("../", "");
             blobPath = (blobPath.Substring(blobPath.Length - 1) != "/") ? blobPath + "/" : blobPath.TrimEnd(new[] { '/', '\\' }) + "/";
