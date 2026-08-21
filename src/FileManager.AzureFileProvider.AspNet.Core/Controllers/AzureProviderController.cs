@@ -21,14 +21,31 @@ namespace EJ2AzureASPCoreFileProvider.Controllers
         public AzureProviderController(IWebHostEnvironment hostingEnvironment)
         {
             this.operation = new AzureFileProvider();
-            blobPath = "<--blobPath-->";
-            filePath = "<--filePath-->";
+
+            // Read the Azure Blob configuration from environment variables.
+            // These values are provided through Docker (docker-compose.yml / Dockerfile) or the host environment.
+            string accountName = Environment.GetEnvironmentVariable("AZURE_ACCOUNT_NAME");
+            string accountKey = Environment.GetEnvironmentVariable("AZURE_ACCOUNT_KEY");
+            string blobName = Environment.GetEnvironmentVariable("AZURE_BLOB_NAME");
+            blobPath = Environment.GetEnvironmentVariable("AZURE_BLOB_PATH");
+            filePath = Environment.GetEnvironmentVariable("AZURE_FILE_PATH");
+            // Use placeholder values for manual configuration
+            if (string.IsNullOrWhiteSpace(accountName))
+                accountName = "<--accountName-->";
+            if (string.IsNullOrWhiteSpace(accountKey))
+                accountKey = "<--accountKey-->";
+            if (string.IsNullOrWhiteSpace(blobName))
+                blobName = "<--blobName-->";
+            if (string.IsNullOrWhiteSpace(blobPath))
+                blobPath = "<--blobPath-->";
+            if (string.IsNullOrWhiteSpace(filePath))
+                filePath = "<--filePath-->";
             blobPath = blobPath.Replace("../", "");
             filePath = filePath.Replace("../", "");
             blobPath = (blobPath.Substring(blobPath.Length - 1) != "/") ? blobPath + "/" : blobPath.TrimEnd(new[] { '/', '\\' }) + "/";
             filePath = (filePath.Substring(filePath.Length - 1) == "/") ? filePath.TrimEnd(new[] { '/', '\\' }) : filePath;
             this.operation.SetBlobContainer(blobPath, filePath);
-            this.operation.RegisterAzure("<--accountName-->", "<--accountKey-->", "<--blobName-->");
+            this.operation.RegisterAzure(accountName, accountKey, blobName);
             //----------
             //For example 
             //this.operation.setBlobContainer("https://azure_service_account.blob.core.windows.net/files/", "https://azure_service_account.blob.core.windows.net/files/Files");
