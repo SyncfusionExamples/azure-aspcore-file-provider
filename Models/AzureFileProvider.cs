@@ -884,14 +884,17 @@ namespace Syncfusion.EJ2.FileManager.AzureFileProvider
         }
 
         // To check if folder exists
-        private async Task<bool> IsFolderExists(string path)
+        private async Task<bool> IsFolderExists(string folderPath)
         {
-            List<string> x = new List<string>() { };
-            foreach (Azure.Page<BlobHierarchyItem> page in container.GetBlobsByHierarchy(prefix: path, delimiter: "/").AsPages())
+            string normalizedPath = folderPath.EndsWith("/") ? folderPath : folderPath + "/";
+            await foreach (BlobHierarchyItem item in container.GetBlobsByHierarchyAsync(prefix: normalizedPath, delimiter: "/"))
             {
-                x = page.Values.Where(item => item.IsPrefix).Select(item => item.Prefix).ToList();
+                if (item.IsPrefix && item.Prefix.Equals(normalizedPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
             }
-            return x.Count > 0;
+            return false;
         }
 
         // To check if file exists
